@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "133240949613",
+    "project_id": "intellibridge-36e51",
+    "storage_bucket": "intellibridge-36e51.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:133240949613:android:417030080c7ebf454f2864",
+        "android_client_info": {
+          "package_name": "com.santh.intellibridge"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9ukwvf_W5UpPnyqgU9klD9i2nh6A2RZE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
