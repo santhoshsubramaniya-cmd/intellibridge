@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../config/themes.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/firestore_sevice.dart';
+import '../../../services/firestore_service.dart';
 import '../../../models/note_model.dart';
 
 class ResultsScreen extends StatelessWidget {

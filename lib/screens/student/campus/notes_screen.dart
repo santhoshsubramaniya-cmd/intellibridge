@@ -5,7 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../config/themes.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/firestore_sevice.dart';
+import '../../../services/firestore_service.dart';
 import '../../../models/note_model.dart';
 
 class NotesScreen extends StatelessWidget {

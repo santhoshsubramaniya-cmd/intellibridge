@@ -1,3 +1,8 @@
+# ============================================================
+# SmartPlace — Complete pubspec.yaml (Week 10 Final)
+# Replace your existing pubspec.yaml with this
+# ============================================================
+
 name: smartplace
 description: AI-Powered Campus-to-Career Platform
 publish_to: 'none'
@@ -25,12 +30,12 @@ dependencies:
   lottie: ^3.1.0
   cached_network_image: ^3.3.1
   fl_chart: ^0.68.0
-  curved_navigation_bar: ^1.0.3
   shimmer: ^3.0.0
 
   # File & Media
   file_picker: ^8.0.0
   image_picker: ^1.0.7
+  url_launcher: ^6.2.5
 
   # Utils
   shared_preferences: ^2.2.3
@@ -38,7 +43,6 @@ dependencies:
   intl: ^0.19.0
   flutter_dotenv: ^5.1.0
   provider: ^6.1.2
-  get: ^4.6.6
   uuid: ^4.3.3
 
 dev_dependencies:
@@ -52,4 +56,12 @@ flutter:
     - assets/images/
     - assets/animations/
     - .env
- 
+  # Uncomment below ONLY after downloading Syne fonts
+  # fonts:
+  #   - family: Syne
+  #     fonts:
+  #       - asset: assets/fonts/Syne-Regular.ttf
+  #       - asset: assets/fonts/Syne-Bold.ttf
+  #         weight: 700
+  #       - asset: assets/fonts/Syne-ExtraBold.ttf
+  #         weight: 800

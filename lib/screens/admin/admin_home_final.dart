@@ -1,68 +1,9 @@
-// admin_home.dart
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../services/auth_service.dart';
-import '../../config/themes.dart';
-import '../auth/login_screen.dart';
-
-class AdminHome extends StatelessWidget {
-  const AdminHome({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final user = context.watch<AuthService>().userModel;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('SmartPlace — Admin'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await context.read<AuthService>().logout();
-              if (context.mounted) {
-                Navigator.pushReplacement(context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()));
-              }
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 70, height: 70,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: AppColors.adminColor.withOpacity(0.15),
-              ),
-              child: const Icon(Icons.admin_panel_settings_outlined,
-                  color: AppColors.adminColor, size: 36),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Welcome, ${user?.name ?? 'Admin'} ⚙️',
-              style: const TextStyle(
-                  fontFamily: 'Syne',
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            const Text('Admin Portal — Week 7 coming soon!',
-                style: TextStyle(color: AppColors.lightMuted)),
-          ],
-        ),
-      ),
-    );
-  }
-}
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../config/themes.dart';
 import '../../services/auth_service.dart';
-import '../../services/firestore_sevice.dart';
+import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
 import '../auth/login_screen.dart';
 

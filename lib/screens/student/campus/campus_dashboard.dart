@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../config/themes.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/firestore_sevice.dart';
+import '../../../services/firestore_service.dart';
 import '../../auth/login_screen.dart';
 
 class CampusDashboard extends StatelessWidget {
