@@ -6,6 +6,7 @@ import '../../../config/themes.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/firestore_service.dart';
 import '../../../services/gemini_service.dart';
+import 'dart:convert';
 
 class PortfolioScreen extends StatefulWidget {
   const PortfolioScreen({super.key});
