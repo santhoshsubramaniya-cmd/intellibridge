@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../config/themes.dart';
-import '../../../config/constants.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/firestore_service.dart';
 import '../../../services/gemini_service.dart';
-import '../../../models/student_model.dart';
+import '../../../services/firestore_service.dart';
 
 class AIProfileScreen extends StatefulWidget {
   const AIProfileScreen({super.key});
@@ -16,14 +14,11 @@ class AIProfileScreen extends StatefulWidget {
 }
 
 class _AIProfileScreenState extends State<AIProfileScreen> {
-  final _fs = FirestoreService();
   final _gemini = GeminiService();
-
-  StudentProfile? _profile;
-  Map<String, dynamic> _careerGap = {};
+  final _fs = FirestoreService();
+  Map<String, dynamic>? _studentData;
+  bool _isAnalysing = false;
   bool _isLoading = true;
-  bool _isRunning = false;
-  String? _selectedTargetRole;
 
   @override
   void initState() {
@@ -35,42 +30,25 @@ class _AIProfileScreenState extends State<AIProfileScreen> {
     final user = context.read<AuthService>().userModel;
     if (user == null) return;
     final profile = await _fs.getStudentProfile(user.uid);
-    if (mounted) {
-      setState(() {
-        _profile = profile;
-        _isLoading = false;
-      });
-    }
+    if (mounted) setState(() { _studentData = profile?.toMap(); _isLoading = false; });
   }
 
-  Future<void> _analyseGap() async {
-    if (_selectedTargetRole == null || _profile == null) return;
+  Future<void> _runAnalysis() async {
     final user = context.read<AuthService>().userModel;
     if (user == null) return;
-
-    setState(() => _isRunning = true);
-
-    final requiredSkills =
-        AppConstants.roleSkills[_selectedTargetRole!] ?? [];
-    final result = await _gemini.analyseCareerGap(
-      userId: user.uid,
-      targetRole: _selectedTargetRole!,
-      requiredSkills: requiredSkills,
-      minCgpa: 6.5,
-    );
-
-    if (mounted) {
-      setState(() {
-        _careerGap = result;
-        _isRunning = false;
-      });
-    }
+    setState(() => _isAnalysing = true);
+    await _gemini.analyseStudentProfile(user.uid);
+    await _loadProfile();
+    if (mounted) setState(() => _isAnalysing = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Career Profile')),
+      appBar: AppBar(
+        title: const Text('AI Profile'),
+        actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _isAnalysing ? null : _runAnalysis)],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -78,105 +56,63 @@ class _AIProfileScreenState extends State<AIProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // AI summary card (if analysed)
-                  if (_profile?.strongestDomain != null)
-                    _ProfileSummaryCard(profile: _profile!)
-                        .animate()
-                        .fadeIn()
-                        .slideY(begin: 0.2),
+                  _HeroCard(
+                    score: (_studentData?['hireabilityScore'] ?? 0.0).toDouble(),
+                    percentile: _studentData?['overallPercentile'] ?? 0,
+                    isAnalysing: _isAnalysing,
+                    onAnalyse: _runAnalysis,
+                  ).animate().fadeIn(),
 
-                  if (_profile?.strongestDomain != null)
+                  if (_studentData?['hireabilityBreakdown'] != null) ...[
                     const SizedBox(height: 24),
-
-                  // Career gap analyser
-                  const Text('Career Gap Analyser',
-                          style: TextStyle(
-                              fontFamily: 'Syne',
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700))
-                      .animate()
-                      .fadeIn(delay: 100.ms),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Pick your target role to see exactly what you\'re missing.',
-                    style: TextStyle(
-                        fontSize: 13, color: AppColors.lightMuted),
-                  ).animate().fadeIn(delay: 120.ms),
-                  const SizedBox(height: 16),
-
-                  // Role selector
-                  _RoleSelector(
-                    selectedRole: _selectedTargetRole,
-                    onSelect: (r) =>
-                        setState(() => _selectedTargetRole = r),
-                  ).animate().fadeIn(delay: 150.ms),
-
-                  const SizedBox(height: 16),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: (_selectedTargetRole == null ||
-                              _isRunning)
-                          ? null
-                          : _analyseGap,
-                      icon: _isRunning
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white))
-                          : const Icon(Icons.search_rounded,
-                              size: 18),
-                      label: Text(_isRunning
-                          ? 'Analysing Gap...'
-                          : 'Analyse Career Gap'),
-                    ),
-                  ).animate().fadeIn(delay: 180.ms),
-
-                  // Gap result
-                  if (_careerGap.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    _CareerGapResult(
-                      gap: _careerGap,
-                      role: _selectedTargetRole ?? '',
-                    ).animate().fadeIn().slideY(begin: 0.1),
-                  ],
-
-                  // Skills the student currently has
-                  if (_profile != null &&
-                      _profile!.skills.isNotEmpty) ...[
-                    const SizedBox(height: 28),
-                    const Text('Your Current Skills',
-                            style: TextStyle(
-                                fontFamily: 'Syne',
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700))
-                        .animate()
-                        .fadeIn(delay: 250.ms),
+                    const Text('Breakdown', style: TextStyle(fontFamily: 'Syne', fontSize: 18, fontWeight: FontWeight.w700)).animate().fadeIn(delay: 100.ms),
                     const SizedBox(height: 12),
-                    _SkillsDisplay(skills: _profile!.skills)
-                        .animate()
-                        .fadeIn(delay: 280.ms),
+                    _BreakdownCard(breakdown: Map<String, dynamic>.from(_studentData!['hireabilityBreakdown'])).animate().fadeIn(delay: 200.ms),
                   ],
 
-                  // Weak areas
-                  if (_profile != null &&
-                      _profile!.weakAreas.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    const Text('Areas to Improve',
-                            style: TextStyle(
-                                fontFamily: 'Syne',
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700))
-                        .animate()
-                        .fadeIn(delay: 300.ms),
-                    const SizedBox(height: 12),
-                    _WeakAreasDisplay(areas: _profile!.weakAreas)
-                        .animate()
-                        .fadeIn(delay: 320.ms),
+                  if (_studentData?['profileSummary'] != null) ...[
+                    const SizedBox(height: 20),
+                    _InsightCard(title: '🤖 AI Assessment', content: _studentData!['profileSummary'], color: AppColors.primary).animate().fadeIn(delay: 300.ms),
                   ],
+
+                  if (_studentData?['immediateAction'] != null) ...[
+                    const SizedBox(height: 12),
+                    _InsightCard(title: '⚡ Do This Now', content: _studentData!['immediateAction'], color: AppColors.accent).animate().fadeIn(delay: 350.ms),
+                  ],
+
+                  if (_studentData?['suitableRoles'] != null) ...[
+                    const SizedBox(height: 20),
+                    const Text('Best Roles For You', style: TextStyle(fontFamily: 'Syne', fontSize: 18, fontWeight: FontWeight.w700)).animate().fadeIn(delay: 400.ms),
+                    const SizedBox(height: 10),
+                    Wrap(spacing: 8, runSpacing: 8,
+                      children: List<String>.from(_studentData!['suitableRoles'])
+                          .map((r) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.secondary.withOpacity(0.3))),
+                            child: Text(r, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondary)),
+                          )).toList(),
+                    ).animate().fadeIn(delay: 450.ms),
+                  ],
+
+                  if (_studentData?['topSkillsToLearn'] != null) ...[
+                    const SizedBox(height: 20),
+                    const Text('Top Skills to Learn', style: TextStyle(fontFamily: 'Syne', fontSize: 18, fontWeight: FontWeight.w700)).animate().fadeIn(delay: 500.ms),
+                    const SizedBox(height: 10),
+                    ...List<String>.from(_studentData!['topSkillsToLearn']).asMap().entries.map((e) =>
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(10), border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkBorder : AppColors.lightBorder)),
+                        child: Row(children: [
+                          Container(width: 28, height: 28, decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.12), shape: BoxShape.circle), child: Center(child: Text('${e.key + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)))),
+                          const SizedBox(width: 12),
+                          Text(e.value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        ]),
+                      ).animate().fadeIn(delay: Duration(milliseconds: 500 + e.key * 80))),
+                  ],
+
+                  if (_studentData?['profileSummary'] == null)
+                    _CTACard(isAnalysing: _isAnalysing, onTap: _runAnalysis).animate().fadeIn(),
 
                   const SizedBox(height: 40),
                 ],
@@ -186,566 +122,72 @@ class _AIProfileScreenState extends State<AIProfileScreen> {
   }
 }
 
-// ─── Profile Summary ──────────────────────────────
-class _ProfileSummaryCard extends StatelessWidget {
-  final StudentProfile profile;
-  const _ProfileSummaryCard({required this.profile});
+class _HeroCard extends StatelessWidget {
+  final double score; final int percentile; final bool isAnalysing; final VoidCallback onAnalyse;
+  const _HeroCard({required this.score, required this.percentile, required this.isAnalysing, required this.onAnalyse});
+
+  Color get color => score >= 75 ? AppColors.secondary : score >= 50 ? AppColors.warning : AppColors.accent;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary.withOpacity(0.1),
-            AppColors.secondary.withOpacity(0.07),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: AppColors.primary.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [AppColors.primary, AppColors.secondary]),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.psychology_rounded,
-                    color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('AI Career Profile',
-                        style: TextStyle(
-                            fontFamily: 'Syne',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15)),
-                    Text(
-                      profile.strongestDomain != null
-                          ? 'Strongest in: ${profile.strongestDomain}'
-                          : 'Profile analysed',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.lightMuted),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.secondary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${profile.hireabilityScore.toInt()}%',
-                  style: const TextStyle(
-                      fontFamily: 'Syne',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.secondary),
-                ),
-              ),
-            ],
-          ),
-          if (profile.suitableRoles.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            const Text('Best Fit Roles',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.lightMuted)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: profile.suitableRoles
-                  .take(3)
-                  .map((r) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                              color: AppColors.primary
-                                  .withOpacity(0.25)),
-                        ),
-                        child: Text(r,
-                            style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary)),
-                      ))
-                  .toList(),
-            ),
-          ],
-        ],
-      ),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.primary.withOpacity(0.12), AppColors.secondary.withOpacity(0.08)]), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.primary.withOpacity(0.2))),
+      child: Column(children: [
+        const Text('Hireability Score', style: TextStyle(fontSize: 13, color: AppColors.lightMuted, letterSpacing: 0.5)),
+        const SizedBox(height: 12),
+        isAnalysing
+          ? const Column(children: [SizedBox(height: 60, width: 60, child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(AppColors.primary))), SizedBox(height: 12), Text('Gemini AI analysing...', style: TextStyle(color: AppColors.lightMuted, fontSize: 13))])
+          : Column(children: [
+              Text('${score.toStringAsFixed(0)}%', style: TextStyle(fontFamily: 'Syne', fontSize: 64, fontWeight: FontWeight.w800, color: color, height: 1)),
+              const SizedBox(height: 8),
+              Text(score >= 75 ? '🚀 Highly Placeable!' : score >= 50 ? '⚡ Good Progress' : '📈 Needs Improvement', style: TextStyle(fontFamily: 'Syne', fontSize: 16, fontWeight: FontWeight.w700, color: color)),
+              const SizedBox(height: 6),
+              Text('Top $percentile% of students', style: const TextStyle(fontSize: 13, color: AppColors.lightMuted)),
+              const SizedBox(height: 14),
+              ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: score / 100, backgroundColor: color.withOpacity(0.15), valueColor: AlwaysStoppedAnimation(color), minHeight: 8)),
+            ]),
+        const SizedBox(height: 16),
+        SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: isAnalysing ? null : onAnalyse, icon: const Icon(Icons.auto_awesome_rounded, size: 16), label: Text(isAnalysing ? 'Analysing...' : 'Run AI Analysis'))),
+      ]),
     );
   }
 }
 
-// ─── Role Selector ────────────────────────────────
-class _RoleSelector extends StatelessWidget {
-  final String? selectedRole;
-  final ValueChanged<String> onSelect;
-  const _RoleSelector(
-      {required this.selectedRole, required this.onSelect});
+class _BreakdownCard extends StatelessWidget {
+  final Map<String, dynamic> breakdown;
+  const _BreakdownCard({required this.breakdown});
 
   @override
   Widget build(BuildContext context) {
-    final roles = AppConstants.roleSkills.keys.toList();
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: roles.map((role) {
-        final isSelected = selectedRole == role;
-        return GestureDetector(
-          onTap: () => onSelect(role),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.primary.withOpacity(0.15)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.lightBorder,
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Text(role,
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected
-                        ? FontWeight.w700
-                        : FontWeight.w400,
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.lightMuted)),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-// ─── Career Gap Result ────────────────────────────
-class _CareerGapResult extends StatelessWidget {
-  final Map<String, dynamic> gap;
-  final String role;
-  const _CareerGapResult(
-      {required this.gap, required this.role});
-
-  @override
-  Widget build(BuildContext context) {
-    final readiness = gap['overallReadiness'] ?? 0;
-    final weeks = gap['weeksToReady'] ?? 0;
-    final actions =
-        List<String>.from(gap['priorityActions'] ?? []);
-    final gapData = gap['skillGap'] as Map<String, dynamic>? ?? {};
-    final haveSkills = List<String>.from(gapData['have'] ?? []);
-    final missingSkills =
-        List<String>.from(gapData['missing'] ?? []);
-    final cgpaStatus = gap['cgpaStatus'] ?? 'unknown';
-    final expGap = gap['experienceGap'] ?? '';
-
-    final color = readiness >= 70
-        ? AppColors.secondary
-        : readiness >= 45
-            ? AppColors.warning
-            : AppColors.accent;
-
+    final items = [
+      ['Resume Strength', breakdown['resumeStrength'] ?? 0, AppColors.primary],
+      ['Skill Readiness', breakdown['skillReadiness'] ?? 0, AppColors.secondary],
+      ['Interview Readiness', breakdown['interviewReadiness'] ?? 0, AppColors.warning],
+      ['Portfolio Strength', breakdown['portfolioStrength'] ?? 0, AppColors.accent],
+    ];
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Readiness score header
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Gap Analysis Result',
-                        style: TextStyle(
-                            fontFamily: 'Syne',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16)),
-                    Text('For $role',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.lightMuted)),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('$readiness%',
-                      style: TextStyle(
-                          fontFamily: 'Syne',
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          color: color)),
-                  const Text('Ready',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.lightMuted)),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: readiness / 100,
-              backgroundColor: color.withOpacity(0.15),
-              valueColor: AlwaysStoppedAnimation(color),
-              minHeight: 6,
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Quick stats
-          Row(
-            children: [
-              _QuickStat(
-                label: 'Weeks Needed',
-                value: '$weeks',
-                color: AppColors.primary,
-                icon: Icons.schedule_rounded,
-              ),
-              const SizedBox(width: 10),
-              _QuickStat(
-                label: 'CGPA',
-                value: cgpaStatus == 'meets' ? '✅' : '⚠️',
-                color: cgpaStatus == 'meets'
-                    ? AppColors.secondary
-                    : AppColors.warning,
-                icon: Icons.school_rounded,
-              ),
-            ],
-          ),
-
-          if (expGap.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.07),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                    color: AppColors.warning.withOpacity(0.2)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.info_outline,
-                      color: AppColors.warning, size: 14),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(expGap,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.warning,
-                            height: 1.5)),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          // Skill breakdown
-          if (haveSkills.isNotEmpty || missingSkills.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (haveSkills.isNotEmpty)
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.check_circle_rounded,
-                                color: AppColors.secondary,
-                                size: 14),
-                            SizedBox(width: 4),
-                            Text('You Have',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.secondary)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: haveSkills
-                              .map((s) => _SkillTag(
-                                    label: s,
-                                    color: AppColors.secondary,
-                                  ))
-                              .toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (haveSkills.isNotEmpty && missingSkills.isNotEmpty)
-                  const SizedBox(width: 12),
-                if (missingSkills.isNotEmpty)
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.cancel_rounded,
-                                color: AppColors.accent, size: 14),
-                            SizedBox(width: 4),
-                            Text('Missing',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.accent)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: missingSkills
-                              .map((s) => _SkillTag(
-                                    label: s,
-                                    color: AppColors.accent,
-                                  ))
-                              .toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ],
-
-          // Priority actions
-          if (actions.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Text('Priority Actions',
-                style: TextStyle(
-                    fontFamily: 'Syne',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14)),
-            const SizedBox(height: 8),
-            ...actions.asMap().entries.map(
-                  (e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 22,
-                          height: 22,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${e.key + 1}',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(e.value,
-                              style: const TextStyle(
-                                  fontSize: 13, height: 1.5)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-          ],
-        ],
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkBorder : AppColors.lightBorder)),
+      child: Column(children: items.map((item) => Padding(padding: const EdgeInsets.only(bottom: 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [Expanded(child: Text(item[0] as String, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))), Text('${item[1]}%', style: TextStyle(fontFamily: 'Syne', fontWeight: FontWeight.w700, color: item[2] as Color, fontSize: 14))]),
+        const SizedBox(height: 6),
+        ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: (item[1] as int) / 100, backgroundColor: (item[2] as Color).withOpacity(0.12), valueColor: AlwaysStoppedAnimation(item[2] as Color), minHeight: 6)),
+      ]))).toList()),
     );
   }
 }
 
-class _QuickStat extends StatelessWidget {
-  final String label, value;
-  final Color color;
-  final IconData icon;
-  const _QuickStat(
-      {required this.label,
-      required this.value,
-      required this.color,
-      required this.icon});
-
+class _InsightCard extends StatelessWidget {
+  final String title, content; final Color color;
+  const _InsightCard({required this.title, required this.content, required this.color});
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.2)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 16),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value,
-                    style: TextStyle(
-                        fontFamily: 'Syne',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: color)),
-                Text(label,
-                    style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.lightMuted)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: color.withOpacity(0.06), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withOpacity(0.2))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: TextStyle(fontFamily: 'Syne', fontSize: 14, fontWeight: FontWeight.w700, color: color)), const SizedBox(height: 8), Text(content, style: const TextStyle(fontSize: 13, height: 1.6, color: AppColors.lightMuted))]));
 }
 
-class _SkillTag extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _SkillTag({required this.label, required this.color});
-
+class _CTACard extends StatelessWidget {
+  final bool isAnalysing; final VoidCallback onTap;
+  const _CTACard({required this.isAnalysing, required this.onTap});
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withOpacity(0.25)),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: color)),
-    );
-  }
-}
-
-// ─── Skills Display ───────────────────────────────
-class _SkillsDisplay extends StatelessWidget {
-  final List<String> skills;
-  const _SkillsDisplay({required this.skills});
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: skills
-          .map((s) => Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: AppColors.primary.withOpacity(0.25)),
-                ),
-                child: Text(s,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary)),
-              ))
-          .toList(),
-    );
-  }
-}
-
-// ─── Weak Areas Display ───────────────────────────
-class _WeakAreasDisplay extends StatelessWidget {
-  final List<String> areas;
-  const _WeakAreasDisplay({required this.areas});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: areas
-          .map((a) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: AppColors.accent.withOpacity(0.2)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.arrow_up_rounded,
-                        color: AppColors.accent, size: 16),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(a,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                    const Text('Improve',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.accent,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ))
-          .toList(),
-    );
-  }
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppColors.primary, AppColors.secondary]), borderRadius: BorderRadius.circular(18)), child: Column(children: [const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 40), const SizedBox(height: 12), const Text('Run Your First AI Analysis', style: TextStyle(fontFamily: 'Syne', color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)), const SizedBox(height: 8), const Text('Gemini AI will analyse all your academic data and build your career intelligence profile.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13)), const SizedBox(height: 20), ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.primary), onPressed: isAnalysing ? null : onTap, child: Text(isAnalysing ? 'Analysing...' : '⚡ Analyse My Profile'))]));
 }

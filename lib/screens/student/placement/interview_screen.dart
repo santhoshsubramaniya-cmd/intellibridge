@@ -1,532 +1,402 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'dart:convert';
 import '../../../config/themes.dart';
-import '../../../config/constants.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/gemini_service.dart';
 
-class InterviewScreen extends StatefulWidget {
-  const InterviewScreen({super.key});
+class MockInterviewScreen extends StatefulWidget {
+  const MockInterviewScreen({super.key});
 
   @override
-  State<InterviewScreen> createState() => _InterviewScreenState();
+  State<MockInterviewScreen> createState() => _MockInterviewScreenState();
 }
 
-class _InterviewScreenState extends State<InterviewScreen> {
+class _MockInterviewScreenState extends State<MockInterviewScreen> {
   final _gemini = GeminiService();
   String? _selectedRole;
-  List<Map<String, dynamic>> _qaPairs = [];
-  String? _currentQuestion;
-  final _answerCtrl = TextEditingController();
+  List<Map<String, dynamic>> _questions = [];
+  int _currentQ = 0;
   bool _isLoading = false;
   bool _isEvaluating = false;
-  bool _sessionComplete = false;
-  Map<String, dynamic>? _sessionResult;
-  int _questionNum = 0;
-  final int _totalQuestions = 5;
+  bool _isCompleted = false;
+  final _answerCtrl = TextEditingController();
+  final List<Map<String, dynamic>> _answers = [];
+  Map<String, dynamic>? _finalReport;
+
+  final _roles = [
+    'Software Engineer',
+    'Data Analyst',
+    'Data Scientist',
+    'Full Stack Developer',
+    'DevOps Engineer',
+  ];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mock Interview'),
-        actions: [
-          if (_selectedRole != null && !_sessionComplete)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Center(
-                child: Text(
-                  '$_questionNum/$_totalQuestions',
-                  style: const TextStyle(
-                      fontFamily: 'Syne', fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-        ],
-      ),
-      body: _selectedRole == null
-          ? _buildRoleSelector()
-          : _sessionComplete
-              ? _buildSessionResult()
-              : _currentQuestion == null
-                  ? _buildLoadingQuestion()
-                  : _buildQuestionView(),
-    );
+  void dispose() {
+    _answerCtrl.dispose();
+    super.dispose();
   }
 
-  Widget _buildRoleSelector() {
-    final roles = [
-      'Software Engineer',
-      'Data Analyst',
-      'Data Scientist',
-      'Full Stack Developer',
-      'DevOps Engineer',
-      'Business Analyst',
-    ];
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                AppColors.secondary.withOpacity(0.1),
-                AppColors.primary.withOpacity(0.08)
-              ]),
-              borderRadius: BorderRadius.circular(14),
-              border:
-                  Border.all(color: AppColors.secondary.withOpacity(0.2)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.record_voice_over_rounded,
-                    color: AppColors.secondary, size: 20),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'AI will ask you 5 interview questions and evaluate each answer with specific feedback.',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(),
-          const SizedBox(height: 24),
-          const Text('Select Interview Role',
-              style: TextStyle(
-                  fontFamily: 'Syne',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700))
-              .animate().fadeIn(delay: 100.ms),
-          const SizedBox(height: 14),
-          ...roles.asMap().entries.map((e) => GestureDetector(
-                onTap: () => _startInterview(e.value),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                        color: Theme.of(context).brightness ==
-                                Brightness.dark
-                            ? AppColors.darkBorder
-                            : AppColors.lightBorder),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.secondary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                            Icons.record_voice_over_outlined,
-                            color: AppColors.secondary,
-                            size: 22),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(e.value,
-                            style: const TextStyle(
-                                fontFamily: 'Syne',
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700)),
-                      ),
-                      const Icon(Icons.arrow_forward_ios_rounded,
-                          size: 14, color: AppColors.lightMuted),
-                    ],
-                  ),
-                ).animate().fadeIn(
-                    delay: Duration(milliseconds: 150 + e.key * 60)),
-              )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingQuestion() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(color: AppColors.secondary),
-          const SizedBox(height: 20),
-          Text(
-            'Preparing Question ${_questionNum + 1}...',
-            style: const TextStyle(
-                fontFamily: 'Syne',
-                fontSize: 16,
-                fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestionView() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: _questionNum / _totalQuestions,
-              backgroundColor: AppColors.lightBorder,
-              valueColor:
-                  const AlwaysStoppedAnimation(AppColors.secondary),
-              minHeight: 6,
-            ),
-          ).animate().fadeIn(),
-          const SizedBox(height: 20),
-
-          // Question card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.secondary.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: AppColors.secondary.withOpacity(0.25)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Q${_questionNum + 1} of $_totalQuestions',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.secondary),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  _currentQuestion ?? '',
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      height: 1.5),
-                ),
-              ],
-            ),
-          ).animate().fadeIn().slideY(begin: 0.1),
-
-          const SizedBox(height: 20),
-
-          const Text('Your Answer',
-              style: TextStyle(
-                  fontFamily: 'Syne',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _answerCtrl,
-            maxLines: 7,
-            decoration: const InputDecoration(
-              hintText:
-                  'Type your answer here. Be specific and structured...',
-            ),
-          ).animate().fadeIn(delay: 100.ms),
-
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.secondary),
-              onPressed: _isEvaluating ? null : _submitAnswer,
-              icon: _isEvaluating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.send_rounded, size: 18),
-              label: Text(
-                  _isEvaluating ? 'Evaluating...' : 'Submit Answer'),
-            ),
-          ).animate().fadeIn(delay: 150.ms),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSessionResult() {
-    final avgScore = _qaPairs.isEmpty
-        ? 0
-        : _qaPairs
-                .map((q) => q['score'] as int? ?? 0)
-                .reduce((a, b) => a + b) ~/
-            _qaPairs.length;
-
-    final color = avgScore >= 75
-        ? AppColors.secondary
-        : avgScore >= 50
-            ? AppColors.warning
-            : AppColors.accent;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Score hero
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: color.withOpacity(0.3)),
-            ),
-            child: Column(
-              children: [
-                TweenAnimationBuilder<int>(
-                  tween: IntTween(begin: 0, end: avgScore),
-                  duration: const Duration(milliseconds: 1000),
-                  builder: (_, val, __) => Text('$val%',
-                      style: TextStyle(
-                          fontFamily: 'Syne',
-                          fontSize: 64,
-                          fontWeight: FontWeight.w800,
-                          color: color)),
-                ),
-                Text(
-                  avgScore >= 75
-                      ? 'Interview Ready! 🚀'
-                      : avgScore >= 50
-                          ? 'Good Progress ✅'
-                          : 'Keep Practicing 📈',
-                  style: TextStyle(
-                      fontFamily: 'Syne',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: color),
-                ),
-                const SizedBox(height: 8),
-                Text('$_totalQuestions questions answered for $_selectedRole',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.lightMuted)),
-              ],
-            ),
-          ).animate().fadeIn().scale(begin: const Offset(0.9, 0.9)),
-
-          const SizedBox(height: 24),
-          const Text('Question-by-Question Review',
-              style: TextStyle(
-                  fontFamily: 'Syne',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 14),
-
-          ..._qaPairs.asMap().entries.map((e) {
-            final qa = e.value;
-            final score = qa['score'] as int? ?? 0;
-            final qColor = score >= 75
-                ? AppColors.secondary
-                : score >= 50
-                    ? AppColors.warning
-                    : AppColors.accent;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 14),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(14),
-                border:
-                    Border.all(color: qColor.withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text('Q${e.key + 1}',
-                          style: const TextStyle(
-                              fontFamily: 'Syne',
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.lightMuted)),
-                      const Spacer(),
-                      Text('$score%',
-                          style: TextStyle(
-                              fontFamily: 'Syne',
-                              fontWeight: FontWeight.w800,
-                              color: qColor)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(qa['question'] ?? '',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
-                  const SizedBox(height: 8),
-                  Text(qa['feedback'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.lightMuted,
-                          height: 1.5)),
-                ],
-              ),
-            ).animate().fadeIn(
-                delay: Duration(milliseconds: e.key * 100));
-          }).toList(),
-
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => setState(() {
-                _selectedRole = null;
-                _qaPairs = [];
-                _currentQuestion = null;
-                _sessionComplete = false;
-                _questionNum = 0;
-                _answerCtrl.clear();
-              }),
-              child: const Text('Start New Interview'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _startInterview(String role) async {
+  Future<void> _startInterview() async {
+    if (_selectedRole == null) return;
+    setState(() => _isLoading = true);
+    final questions = await _gemini.generateInterviewQuestions(_selectedRole!);
     setState(() {
-      _selectedRole = role;
-      _isLoading = true;
+      _questions = questions;
+      _currentQ = 0;
+      _answers.clear();
+      _isLoading = false;
     });
-    await _nextQuestion();
-  }
-
-  Future<void> _nextQuestion() async {
-    setState(() {
-      _currentQuestion = null;
-      _isLoading = true;
-    });
-
-    final previousQs =
-        _qaPairs.map((q) => q['question'] as String).join(', ');
-
-    try {
-      final prompt = '''
-Generate ONE unique interview question for a $_selectedRole role.
-${previousQs.isNotEmpty ? 'Do NOT repeat these questions: $previousQs' : ''}
-Question ${_questionNum + 1} of $_totalQuestions.
-
-Respond ONLY with valid JSON (no markdown, no backticks):
-{
-  "question": "Your interview question here"
-}
-''';
-      final resp = await _gemini.mentorReply(
-        userId: '',
-        message: prompt,
-        studentData: {},
-        chatHistory: [],
-      );
-      // Parse from response
-      final clean = resp.replaceAll('```json', '').replaceAll('```', '').trim();
-      try {
-        final parsed = jsonDecode(clean);
-        setState(() {
-          _currentQuestion = parsed['question'] ?? resp;
-          _isLoading = false;
-        });
-      } catch (_) {
-        setState(() {
-          _currentQuestion = resp;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _currentQuestion =
-            'Explain a challenging project you have worked on and what you learned from it.';
-        _isLoading = false;
-      });
-    }
   }
 
   Future<void> _submitAnswer() async {
-    if (_answerCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please write your answer')),
-      );
-      return;
-    }
-
+    final answer = _answerCtrl.text.trim();
+    if (answer.isEmpty) return;
     setState(() => _isEvaluating = true);
 
-    try {
-      final prompt = '''
-Evaluate this interview answer for a $_selectedRole position.
+    final q = _questions[_currentQ];
+    final eval = await _gemini.evaluateInterviewAnswer(
+      question: q['q'] ?? '',
+      hint: q['hint'] ?? '',
+      answer: answer,
+    );
 
-Question: $_currentQuestion
-Answer: ${_answerCtrl.text}
+    _answers.add({
+      'question': q['q'],
+      'type': q['type'],
+      'answer': answer,
+      'evaluation': eval,
+    });
+    _answerCtrl.clear();
 
-Respond ONLY with valid JSON (no markdown, no backticks):
-{
-  "score": 78,
-  "feedback": "2-sentence specific feedback",
-  "keywords": ["keyword1", "keyword2"],
-  "missing": ["missing point 1", "missing point 2"]
-}
-''';
-      final resp = await _gemini.mentorReply(
-          userId: '', message: prompt, studentData: {}, chatHistory: []);
-      final clean =
-          resp.replaceAll('```json', '').replaceAll('```', '').trim();
-      Map<String, dynamic> evaluation;
-      try {
-        evaluation = jsonDecode(clean) as Map<String, dynamic>;
-      } catch (_) {
-        evaluation = {'score': 70, 'feedback': resp, 'keywords': [], 'missing': []};
-      }
-
-      _qaPairs.add({
-        'question': _currentQuestion,
-        'answer': _answerCtrl.text,
-        'score': evaluation['score'],
-        'feedback': evaluation['feedback'],
+    if (_currentQ < _questions.length - 1) {
+      setState(() {
+        _currentQ++;
+        _isEvaluating = false;
       });
-
-      _answerCtrl.clear();
-      setState(() => _isEvaluating = false);
-
-      if (_questionNum + 1 >= _totalQuestions) {
-        setState(() {
-          _questionNum++;
-          _sessionComplete = true;
-        });
-      } else {
-        setState(() => _questionNum++);
-        await _nextQuestion();
-      }
-    } catch (e) {
-      setState(() => _isEvaluating = false);
+    } else {
+      await _generateReport();
     }
+  }
+
+  Future<void> _generateReport() async {
+    final avgScore = _answers
+            .map((a) => (a['evaluation']?['overall'] ?? 0) as int)
+            .reduce((a, b) => a + b) /
+        _answers.length;
+
+    final user = context.read<AuthService>().userModel;
+
+    await FirebaseFirestore.instance.collection('interviews').add({
+      'userId': user?.uid,
+      'role': _selectedRole,
+      'overallScore': avgScore.round(),
+      'completedAt': FieldValue.serverTimestamp(),
+    });
+
+    setState(() {
+      _finalReport = {
+        'overallScore': avgScore.round(),
+        'role': _selectedRole,
+        'interviewReadiness': avgScore >= 80
+            ? 'High ✅'
+            : avgScore >= 60
+                ? 'Moderate ⚠️'
+                : 'Needs Practice 📈',
+      };
+      _isCompleted = true;
+      _isEvaluating = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_questions.isEmpty) return _buildRoleSelect();
+    if (_isCompleted) return _buildReport();
+    return _buildInterview();
+  }
+
+  Widget _buildRoleSelect() {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mock Interview')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [
+                  AppColors.secondary.withOpacity(0.1),
+                  AppColors.primary.withOpacity(0.06),
+                ]),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.secondary.withOpacity(0.2)),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('AI Mock Interview 🎤',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  SizedBox(height: 6),
+                  Text('5 questions · AI evaluates each answer · Final readiness report',
+                      style: TextStyle(
+                          fontSize: 13, color: AppColors.lightMuted, height: 1.5)),
+                ],
+              ),
+            ).animate().fadeIn(),
+
+            const SizedBox(height: 24),
+            const Text('Choose Your Role',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 14),
+
+            ..._roles.asMap().entries.map((e) {
+              final selected = _selectedRole == e.value;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedRole = e.value),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.secondary.withOpacity(0.08)
+                        : Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                        color: selected ? AppColors.secondary : AppColors.lightBorder,
+                        width: selected ? 2 : 1),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.record_voice_over_rounded,
+                        color: AppColors.secondary, size: 20),
+                    const SizedBox(width: 14),
+                    Expanded(
+                        child: Text(e.value,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: selected ? AppColors.secondary : null))),
+                    if (selected)
+                      const Icon(Icons.check_circle_rounded,
+                          color: AppColors.secondary),
+                  ]),
+                ).animate().fadeIn(delay: Duration(milliseconds: e.key * 80)),
+              );
+            }),
+
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.secondary),
+                onPressed: _selectedRole == null || _isLoading ? null : _startInterview,
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.play_arrow_rounded),
+                label: Text(_isLoading ? 'Preparing questions...' : 'Start Interview'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInterview() {
+    final q = _questions[_currentQ];
+    final progress = (_currentQ + 1) / _questions.length;
+    final typeColor = q['type'] == 'Technical'
+        ? AppColors.primary
+        : q['type'] == 'HR'
+            ? AppColors.secondary
+            : AppColors.warning;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Q${_currentQ + 1} of ${_questions.length}'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(4),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: progress),
+            duration: const Duration(milliseconds: 500),
+            builder: (_, val, __) => LinearProgressIndicator(
+              value: val,
+              backgroundColor: AppColors.lightBorder,
+              valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+              minHeight: 4,
+            ),
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                  color: typeColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8)),
+              child: Text(q['type'] ?? '',
+                  style: TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w700, color: typeColor)),
+            ).animate().fadeIn(),
+
+            const SizedBox(height: 14),
+            Text(q['q'] ?? '',
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w700, height: 1.4))
+                .animate()
+                .fadeIn(delay: 100.ms),
+
+            const SizedBox(height: 20),
+            const Text('Your Answer',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _answerCtrl,
+              maxLines: 8,
+              decoration: const InputDecoration(
+                  hintText: 'Type your answer here. Be clear and specific...'),
+            ).animate().fadeIn(delay: 150.ms),
+
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isEvaluating ? null : _submitAnswer,
+                icon: _isEvaluating
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : Icon(_currentQ < _questions.length - 1
+                        ? Icons.arrow_forward_rounded
+                        : Icons.done_rounded),
+                label: Text(_isEvaluating
+                    ? 'Evaluating...'
+                    : _currentQ < _questions.length - 1
+                        ? 'Next Question'
+                        : 'Finish Interview'),
+              ),
+            ).animate().fadeIn(delay: 200.ms),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReport() {
+    final score = _finalReport?['overallScore'] ?? 0;
+    final color = score >= 80
+        ? AppColors.secondary
+        : score >= 60
+            ? AppColors.warning
+            : AppColors.accent;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Interview Report')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                    colors: [color.withOpacity(0.12), color.withOpacity(0.04)]),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: color.withOpacity(0.3)),
+              ),
+              child: Column(children: [
+                const Text('Interview Complete! 🎉',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                TweenAnimationBuilder<int>(
+                  tween: IntTween(begin: 0, end: score),
+                  duration: const Duration(milliseconds: 1200),
+                  builder: (_, v, __) => Text('$v%',
+                      style: TextStyle(
+                          fontSize: 72, fontWeight: FontWeight.w800, color: color)),
+                ),
+                Text(_finalReport?['interviewReadiness'] ?? '',
+                    style: TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+              ]),
+            ).animate().fadeIn().scale(begin: const Offset(0.8, 0.8)),
+
+            const SizedBox(height: 24),
+            const Text('Question Breakdown',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 14),
+
+            ..._answers.asMap().entries.map((e) {
+              final a = e.value;
+              final eval = a['evaluation'] as Map<String, dynamic>? ?? {};
+              final qScore = eval['overall'] ?? 0;
+              final qColor = qScore >= 80
+                  ? AppColors.secondary
+                  : qScore >= 60
+                      ? AppColors.warning
+                      : AppColors.accent;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: qColor.withOpacity(0.25))),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(
+                        child: Text('Q${e.key + 1}: ${a['question']}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis)),
+                    Text('$qScore%',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            color: qColor)),
+                  ]),
+                  const SizedBox(height: 6),
+                  Text(eval['feedback'] ?? '',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.lightMuted, height: 1.5)),
+                ]),
+              ).animate().fadeIn(delay: Duration(milliseconds: e.key * 100));
+            }),
+
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => setState(() {
+                  _questions.clear();
+                  _selectedRole = null;
+                  _isCompleted = false;
+                  _finalReport = null;
+                }),
+                child: const Text('Try Again'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

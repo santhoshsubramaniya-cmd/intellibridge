@@ -5,9 +5,9 @@ import '../../config/themes.dart';
 import '../../services/auth_service.dart';
 import 'register_screen.dart';
 import '../forgot_password_screen.dart';
-import '../student/student_home.dart';
+import '../student/student_home_final.dart';
 import '../faculty/faculty_home.dart';
-import '../admin/admin_home.dart';
+import '../admin/admin_home_final.dart';
 import '../recruiter/recruiter_home.dart';
 
 class LoginScreen extends StatefulWidget {

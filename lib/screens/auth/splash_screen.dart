@@ -5,9 +5,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../config/themes.dart';
 import '../../services/auth_service.dart';
 import 'login_screen.dart';
-import '../student/student_home.dart';
+import '../student/student_home_final.dart';
 import '../faculty/faculty_home.dart';
-import '../admin/admin_home.dart';
+import '../admin/admin_home_final.dart';
 import '../recruiter/recruiter_home.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -29,45 +29,25 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      _goTo(const LoginScreen());
-      return;
-    }
+    if (user == null) { _goTo(const LoginScreen()); return; }
 
-    final authService = context.read<AuthService>();
-    final profile = await authService.fetchUserProfile(user.uid);
-
+    final auth = context.read<AuthService>();
+    final profile = await auth.fetchUserProfile(user.uid);
     if (!mounted) return;
 
-    if (profile == null) {
-      _goTo(const LoginScreen());
-      return;
-    }
+    if (profile == null) { _goTo(const LoginScreen()); return; }
 
-    // Route based on role
     switch (profile.role) {
-      case 'student':
-        _goTo(const StudentHome());
-        break;
-      case 'faculty':
-        _goTo(const FacultyHome());
-        break;
-      case 'admin':
-        _goTo(const AdminHome());
-        break;
-      case 'recruiter':
-        _goTo(const RecruiterHome());
-        break;
-      default:
-        _goTo(const LoginScreen());
+      case 'student': _goTo(const StudentHome()); break;
+      case 'faculty': _goTo(const FacultyHome()); break;
+      case 'admin': _goTo(const AdminHome()); break;
+      case 'recruiter': _goTo(const RecruiterHome()); break;
+      default: _goTo(const LoginScreen());
     }
   }
 
-  void _goTo(Widget screen) {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => screen),
-    );
-  }
+  void _goTo(Widget w) => Navigator.pushReplacement(
+      context, MaterialPageRoute(builder: (_) => w));
 
   @override
   Widget build(BuildContext context) {
@@ -77,10 +57,8 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // App Icon
             Container(
-              width: 90,
-              height: 90,
+              width: 90, height: 90,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
                 gradient: const LinearGradient(
@@ -88,68 +66,35 @@ class _SplashScreenState extends State<SplashScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.4),
-                    blurRadius: 30,
-                    spreadRadius: 5,
-                  ),
-                ],
+                boxShadow: [BoxShadow(
+                  color: AppColors.primary.withOpacity(0.4),
+                  blurRadius: 30, spreadRadius: 5,
+                )],
               ),
-              child: const Icon(
-                Icons.school_rounded,
-                color: Colors.white,
-                size: 48,
-              ),
-            )
-                .animate()
-                .fadeIn(duration: 600.ms)
-                .scale(begin: const Offset(0.5, 0.5)),
+              child: const Icon(Icons.school_rounded, color: Colors.white, size: 48),
+            ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.5, 0.5)),
 
             const SizedBox(height: 24),
 
-            // App Name
-            const Text(
-              'SmartPlace',
-              style: TextStyle(
-                fontFamily: 'Syne',
-                fontSize: 36,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                letterSpacing: -1,
-              ),
-            )
-                .animate()
-                .fadeIn(delay: 300.ms, duration: 600.ms)
-                .slideY(begin: 0.3),
+            const Text('SmartPlace',
+              style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: Colors.white),
+            ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3),
 
             const SizedBox(height: 8),
 
-            // Tagline
-            const Text(
-              'Campus to Career — Powered by AI',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.darkMuted,
-                letterSpacing: 0.5,
-              ),
-            )
-                .animate()
-                .fadeIn(delay: 500.ms, duration: 600.ms),
+            const Text('Campus to Career — Powered by AI',
+              style: TextStyle(fontSize: 13, color: AppColors.darkMuted),
+            ).animate().fadeIn(delay: 500.ms),
 
             const SizedBox(height: 60),
 
-            // Loading indicator
             const SizedBox(
-              width: 28,
-              height: 28,
+              width: 28, height: 28,
               child: CircularProgressIndicator(
                 strokeWidth: 2.5,
                 valueColor: AlwaysStoppedAnimation(AppColors.primary),
               ),
-            )
-                .animate()
-                .fadeIn(delay: 800.ms),
+            ).animate().fadeIn(delay: 800.ms),
           ],
         ),
       ),

@@ -137,6 +137,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(width: 8),
                     _roleChip(
                         AppConstants.roleRecruiter, '💼', 'Recruiter'),
+                     _roleChip(
+                        AppConstants.roleAdmin, '🛡️', 'Admin'),    
                   ],
                 ).animate().fadeIn(delay: 150.ms),
 
