@@ -48,7 +48,7 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
     _msgCtrl.clear();
     setState(() => _isTyping = true);
 
-    // Save user message
+    // FIX: use saveAIChatMessage (correct method name in ChatService)
     await _chatService.saveAIChatMessage(
       userId: user.uid,
       role: 'user',
@@ -61,8 +61,9 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
     final profile = await _fs.getStudentProfile(user.uid);
     final studentData = profile?.toMap() ?? {};
 
-    // Get chat history
-    final history = await _chatService.getAIChatHistory(user.uid);
+    // FIX: use getAIChatHistory (correct method name)
+    final history =
+        await _chatService.getAIChatHistory(user.uid);
 
     // Get AI reply
     final reply = await _gemini.mentorReply(
@@ -79,7 +80,7 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
       text: reply,
     );
 
-    setState(() => _isTyping = false);
+    if (mounted) setState(() => _isTyping = false);
     _scrollToBottom();
   }
 
@@ -113,8 +114,8 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
               ],
             ),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: AppColors.primary.withOpacity(0.2)),
+            border:
+                Border.all(color: AppColors.primary.withOpacity(0.2)),
           ),
           child: Row(
             children: [
@@ -140,8 +141,7 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
                             fontFamily: 'Syne',
                             fontWeight: FontWeight.w700,
                             fontSize: 14)),
-                    const Text(
-                        'Knows your profile · Available 24/7',
+                    const Text('Knows your profile · Available 24/7',
                         style: TextStyle(
                             fontSize: 11,
                             color: AppColors.lightMuted)),
@@ -197,10 +197,11 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
 
         const SizedBox(height: 8),
 
-        // Messages
+        // Messages — FIX: use getAIChatStream (correct method name)
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: _chatService.getAIChatStream(user?.uid ?? ''),
+            stream:
+                _chatService.getAIChatStream(user?.uid ?? ''),
             builder: (context, snapshot) {
               if (!snapshot.hasData ||
                   snapshot.data!.docs.isEmpty) {
@@ -208,12 +209,13 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
               }
 
               final docs = snapshot.data!.docs;
-              WidgetsBinding.instance.addPostFrameCallback(
-                  (_) => _scrollToBottom());
+              WidgetsBinding.instance
+                  .addPostFrameCallback((_) => _scrollToBottom());
 
               return ListView.builder(
                 controller: _scrollCtrl,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16),
                 itemCount:
                     docs.length + (_isTyping ? 1 : 0),
                 itemBuilder: (context, i) {
@@ -319,9 +321,8 @@ class _MessageBubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(
             horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isUser
-              ? AppColors.primary
-              : Theme.of(context).cardColor,
+          color:
+              isUser ? AppColors.primary : Theme.of(context).cardColor,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -331,8 +332,7 @@ class _MessageBubble extends StatelessWidget {
           border: isUser
               ? null
               : Border.all(
-                  color: Theme.of(context).brightness ==
-                          Brightness.dark
+                  color: Theme.of(context).brightness == Brightness.dark
                       ? AppColors.darkBorder
                       : AppColors.lightBorder,
                 ),
@@ -372,9 +372,8 @@ class _MessageBubble extends StatelessWidget {
                 '${time!.hour}:${time!.minute.toString().padLeft(2, '0')}',
                 style: TextStyle(
                   fontSize: 10,
-                  color: isUser
-                      ? Colors.white60
-                      : AppColors.lightMuted,
+                  color:
+                      isUser ? Colors.white60 : AppColors.lightMuted,
                 ),
               ),
             ],
@@ -392,8 +391,8 @@ class _TypingIndicator extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: const BorderRadius.only(
@@ -414,10 +413,12 @@ class _TypingIndicator extends StatelessWidget {
             SizedBox(
               width: 30,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
                 children: List.generate(
                   3,
-                  (i) => _Dot(delay: Duration(milliseconds: i * 200)),
+                  (i) => _Dot(
+                      delay: Duration(milliseconds: i * 200)),
                 ),
               ),
             ),

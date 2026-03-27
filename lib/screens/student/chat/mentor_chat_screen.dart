@@ -49,7 +49,7 @@ class _MentorChatScreenState extends State<MentorChatScreen> {
       _isLoading = false;
     });
     // Mark messages as read
-    _chatService.markAsRead(roomId, widget.studentId);
+  _chatService.markAsRead(roomId, widget.studentId);
   }
 
   Future<void> _send() async {

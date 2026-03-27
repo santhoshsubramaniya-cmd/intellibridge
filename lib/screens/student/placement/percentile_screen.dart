@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../config/themes.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/firestore_service.dart';
 import '../../../services/percentile_service.dart';
 import '../../../services/placement_drive_service.dart';
 import '../../../services/gemini_service.dart';
@@ -21,6 +21,7 @@ class _PercentileScreenState extends State<PercentileScreen> {
   final _percentileService = PercentileService();
   final _driveService = PlacementDriveService();
   final _gemini = GeminiService();
+  final _fs = FirestoreService();
 
   Map<String, dynamic> _percentileData = {};
   List<PlacementDrive> _drives = [];
@@ -75,14 +76,27 @@ class _PercentileScreenState extends State<PercentileScreen> {
     if (existing != null) {
       plan = existing;
     } else {
+      // FIX: generateTrainingPlan signature uses studentData + skillGaps,
+      // not userId/driveId. Fetch student profile for context.
+      final profile = await _fs.getStudentProfile(user.uid);
+      final studentData = profile?.toMap() ?? {};
+
       plan = await _gemini.generateTrainingPlan(
-        userId: user.uid,
-        driveId: drive.id,
+        studentData: studentData,
         company: drive.company,
         role: drive.role,
-        requiredSkills: drive.requiredSkills,
+        skillGaps: drive.requiredSkills,
         daysLeft: drive.daysLeft,
       );
+
+      // Save for future retrieval
+      if (plan.isNotEmpty && !plan.containsKey('error')) {
+        await _driveService.saveTrainingPlan(
+          userId: user.uid,
+          driveId: drive.id,
+          plan: plan,
+        );
+      }
     }
 
     if (mounted) {
@@ -165,12 +179,14 @@ class _PercentileScreenState extends State<PercentileScreen> {
                         eligibility: elig,
                         isLoadingPlan:
                             _loadingPlan[drive.id] ?? false,
-                        onGeneratePlan: () => _generatePlan(drive),
+                        onGeneratePlan: () =>
+                            _generatePlan(drive),
                       )
                           .animate()
                           .fadeIn(
                               delay: Duration(
-                                  milliseconds: 300 + e.key * 80))
+                                  milliseconds:
+                                      300 + e.key * 80))
                           .slideY(begin: 0.1);
                     }),
 
@@ -213,7 +229,10 @@ class _PercentileHero extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
+          colors: [
+            color.withOpacity(0.15),
+            color.withOpacity(0.05)
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -298,12 +317,15 @@ class _MetricPill extends StatelessWidget {
   final String label, value;
   final Color color;
   const _MetricPill(
-      {required this.label, required this.value, required this.color});
+      {required this.label,
+      required this.value,
+      required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -335,7 +357,6 @@ class _BreakdownCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final score = (data['hireabilityScore'] ?? 0.0) as double;
 
-    // Derive approximate sub-scores from overall
     final cgpaScore = (score * 0.25).clamp(0.0, 25.0);
     final skillScore = (score * 0.20).clamp(0.0, 20.0);
     final internScore = (score * 0.20).clamp(0.0, 20.0);
@@ -363,11 +384,16 @@ class _BreakdownCard extends StatelessWidget {
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 16),
           _BreakdownRow(label: 'CGPA', score: cgpaScore, max: 25),
-          _BreakdownRow(label: 'Skills', score: skillScore, max: 20),
-          _BreakdownRow(label: 'Internships', score: internScore, max: 20),
           _BreakdownRow(
-              label: 'Attendance', score: attendanceScore, max: 15),
-          _BreakdownRow(label: 'Projects', score: projectScore, max: 20),
+              label: 'Skills', score: skillScore, max: 20),
+          _BreakdownRow(
+              label: 'Internships', score: internScore, max: 20),
+          _BreakdownRow(
+              label: 'Attendance',
+              score: attendanceScore,
+              max: 15),
+          _BreakdownRow(
+              label: 'Projects', score: projectScore, max: 20),
         ],
       ),
     );
@@ -378,7 +404,9 @@ class _BreakdownRow extends StatelessWidget {
   final String label;
   final double score, max;
   const _BreakdownRow(
-      {required this.label, required this.score, required this.max});
+      {required this.label,
+      required this.score,
+      required this.max});
 
   @override
   Widget build(BuildContext context) {
@@ -399,7 +427,8 @@ class _BreakdownRow extends StatelessWidget {
               Expanded(
                   child: Text(label,
                       style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600))),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600))),
               Text(
                 '${score.toStringAsFixed(0)} / ${max.toInt()}',
                 style: TextStyle(
@@ -445,7 +474,8 @@ class _DriveEligibilityCard extends StatelessWidget {
     final cgpaOk = eligibility['cgpaOk'] ?? false;
     final percentileOk = eligibility['percentileOk'] ?? false;
     final gap = (eligibility['percentileGap'] ?? 0).toInt();
-    final daysLeft = eligibility['daysLeft'] ?? drive.daysLeft;
+    final daysLeft =
+        eligibility['daysLeft'] ?? drive.daysLeft;
 
     final borderColor =
         isEligible ? AppColors.secondary : AppColors.accent;
@@ -460,7 +490,8 @@ class _DriveEligibilityCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor.withOpacity(0.35)),
+        border:
+            Border.all(color: borderColor.withOpacity(0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,7 +535,7 @@ class _DriveEligibilityCard extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Requirement checks
+          // Requirement checks — FIX: use cgpaCutoff (matches placement_drive_model.dart)
           Row(
             children: [
               _CheckChip(
@@ -529,23 +560,27 @@ class _DriveEligibilityCard extends StatelessWidget {
           if (!isEligible && gap > 0) ...[
             const SizedBox(height: 10),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
                 color: AppColors.warning.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                    color: AppColors.warning.withOpacity(0.25)),
+                    color:
+                        AppColors.warning.withOpacity(0.25)),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.trending_up_rounded,
                       color: AppColors.warning, size: 16),
                   const SizedBox(width: 8),
-                  Text(
-                    'Need $gap more percentile points. Generate a plan!',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.warning),
+                  Expanded(
+                    child: Text(
+                      'Need $gap more percentile points. Generate a plan!',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.warning),
+                    ),
                   ),
                 ],
               ),
@@ -554,7 +589,6 @@ class _DriveEligibilityCard extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-          // Skills
           if (drive.requiredSkills.isNotEmpty) ...[
             Wrap(
               spacing: 6,
@@ -565,8 +599,10 @@ class _DriveEligibilityCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(5),
+                          color: AppColors.primary
+                              .withOpacity(0.08),
+                          borderRadius:
+                              BorderRadius.circular(5),
                         ),
                         child: Text(s,
                             style: const TextStyle(
@@ -587,14 +623,16 @@ class _DriveEligibilityCard extends StatelessWidget {
                 backgroundColor: isEligible
                     ? AppColors.secondary
                     : AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 10),
               ),
               icon: isLoadingPlan
                   ? const SizedBox(
                       width: 14,
                       height: 14,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                          strokeWidth: 2,
+                          color: Colors.white))
                   : const Icon(Icons.map_rounded, size: 16),
               label: Text(
                 isLoadingPlan

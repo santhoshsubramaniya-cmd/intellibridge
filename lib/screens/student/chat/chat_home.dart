@@ -17,7 +17,7 @@ class ChatHome extends StatefulWidget {
 class _ChatHomeState extends State<ChatHome>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _chatService = ChatService();
+  final chatService = ChatService();
 
   @override
   void initState() {

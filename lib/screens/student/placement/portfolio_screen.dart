@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -6,7 +7,6 @@ import '../../../config/themes.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/firestore_service.dart';
 import '../../../services/gemini_service.dart';
-import 'dart:convert';
 
 class PortfolioScreen extends StatefulWidget {
   const PortfolioScreen({super.key});
@@ -38,8 +38,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         .get();
 
     setState(() {
-      _entries =
-          snap.docs.map((d) => d.data()).toList();
+      _entries = snap.docs.map((d) => d.data()).toList();
     });
   }
 
@@ -80,7 +79,6 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 
       final clean =
           reply.replaceAll('```json', '').replaceAll('```', '').trim();
-      import 'dart:convert';
       final parsed = jsonDecode(clean) as Map<String, dynamic>;
 
       await FirebaseFirestore.instance.collection('portfolio').add({
@@ -96,10 +94,14 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 
       await _loadPortfolio();
     } catch (e) {
-      // fallback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating portfolio: $e')),
+        );
+      }
     }
 
-    setState(() => _isGenerating = false);
+    if (mounted) setState(() => _isGenerating = false);
   }
 
   @override
@@ -131,7 +133,8 @@ Respond ONLY with valid JSON (no markdown, no backticks):
               itemBuilder: (context, i) =>
                   _PortfolioCard(entry: _entries[i])
                       .animate()
-                      .fadeIn(delay: Duration(milliseconds: i * 100))
+                      .fadeIn(
+                          delay: Duration(milliseconds: i * 100))
                       .slideY(begin: 0.1),
             ),
     );
@@ -156,8 +159,8 @@ Respond ONLY with valid JSON (no markdown, no backticks):
             const Text(
                 'Tap "Generate" to create your AI-powered portfolio',
                 textAlign: TextAlign.center,
-                style:
-                    TextStyle(color: AppColors.lightMuted, fontSize: 13)),
+                style: TextStyle(
+                    color: AppColors.lightMuted, fontSize: 13)),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _isGenerating ? null : _generatePortfolio,
@@ -178,7 +181,8 @@ class _PortfolioCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strengths = List<String>.from(entry['strengths'] ?? []);
-    final bullets = List<String>.from(entry['resumeBullets'] ?? []);
+    final bullets =
+        List<String>.from(entry['resumeBullets'] ?? []);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -200,24 +204,22 @@ class _PortfolioCard extends StatelessWidget {
                 AppColors.primary.withOpacity(0.1),
                 AppColors.secondary.withOpacity(0.08)
               ]),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.auto_awesome_rounded,
-                        color: AppColors.primary, size: 16),
-                    const SizedBox(width: 6),
-                    const Text('AI Generated Portfolio',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary)),
-                  ],
-                ),
+                Row(children: [
+                  const Icon(Icons.auto_awesome_rounded,
+                      color: AppColors.primary, size: 16),
+                  const SizedBox(width: 6),
+                  const Text('AI Generated Portfolio',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary)),
+                ]),
                 const SizedBox(height: 10),
                 Text(entry['headline'] ?? '',
                     style: const TextStyle(
@@ -253,9 +255,10 @@ class _PortfolioCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color:
-                                    AppColors.secondary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(6),
+                                color: AppColors.secondary
+                                    .withOpacity(0.1),
+                                borderRadius:
+                                    BorderRadius.circular(6),
                                 border: Border.all(
                                     color: AppColors.secondary
                                         .withOpacity(0.25)),
@@ -264,7 +267,8 @@ class _PortfolioCard extends StatelessWidget {
                                   style: const TextStyle(
                                       fontSize: 11,
                                       color: AppColors.secondary,
-                                      fontWeight: FontWeight.w600)),
+                                      fontWeight:
+                                          FontWeight.w600)),
                             ))
                         .toList(),
                   ),

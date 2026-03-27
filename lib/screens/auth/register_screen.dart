@@ -69,6 +69,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (result == AuthResult.success) {
+      // Sign out immediately so the Firebase Auth session doesn't
+      // persist and bypass the approval check on next app launch
+      await authService.logout();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -137,8 +141,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(width: 8),
                     _roleChip(
                         AppConstants.roleRecruiter, '💼', 'Recruiter'),
-                     _roleChip(
-                        AppConstants.roleAdmin, '🛡️', 'Admin'),    
+                    _roleChip(
+                        AppConstants.roleAdmin, '🛡️', 'Admin'),
                   ],
                 ).animate().fadeIn(delay: 150.ms),
 

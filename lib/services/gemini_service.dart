@@ -211,4 +211,6 @@ Role: $role, Task: $taskTitle, Instructions: $instructions, Answer: $candidateAn
       return [];
     }
   }
+
+  Future<Object?> generatePlacementAlert({required String studentName, required String company, required String role, required int daysLeft, required int studentPercentile, required double requiredPercentile, required int readiness}) async {}
 }
