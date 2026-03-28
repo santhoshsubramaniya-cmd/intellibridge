@@ -24,7 +24,7 @@ class _AdminHomeState extends State<AdminHome> {
 
     final pages = [
       _AdminDashboard(fs: _fs),
-      _ApprovalsTab(fs: _fs),
+      _ApprovalsTab(fs: _fs),       // now StreamBuilder — live updates
       _BroadcastTab(fs: _fs),
     ];
 
@@ -62,8 +62,7 @@ class _AdminHomeState extends State<AdminHome> {
       onTap: () => setState(() => _currentIndex = index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
           color: isActive
               ? AppColors.adminColor.withOpacity(0.12)
@@ -74,17 +73,14 @@ class _AdminHomeState extends State<AdminHome> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon,
-                color: isActive
-                    ? AppColors.adminColor
-                    : AppColors.lightMuted,
+                color: isActive ? AppColors.adminColor : AppColors.lightMuted,
                 size: 22),
             const SizedBox(height: 3),
             Text(label,
                 style: TextStyle(
                     fontSize: 10,
-                    fontWeight: isActive
-                        ? FontWeight.w700
-                        : FontWeight.w400,
+                    fontWeight:
+                        isActive ? FontWeight.w700 : FontWeight.w400,
                     color: isActive
                         ? AppColors.adminColor
                         : AppColors.lightMuted)),
@@ -95,7 +91,7 @@ class _AdminHomeState extends State<AdminHome> {
   }
 }
 
-// ─── Admin Dashboard ──────────────────────────────
+// ─── Dashboard ────────────────────────────────────
 class _AdminDashboard extends StatelessWidget {
   final FirestoreService fs;
   const _AdminDashboard({required this.fs});
@@ -127,13 +123,11 @@ class _AdminDashboard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Admin welcome card
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [AppColors.adminColor, Color(0xFFCC3355)],
-                    ),
+                        colors: [AppColors.adminColor, Color(0xFFCC3355)]),
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
@@ -143,74 +137,62 @@ class _AdminDashboard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Admin Dashboard',
-                                style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13)),
-                            const SizedBox(height: 4),
-                            const Text('SmartPlace',
-                                style: TextStyle(
-                                    fontFamily: 'Syne',
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w800)),
-                            const SizedBox(height: 6),
-                            const Text(
-                                'Manage students, faculty & campus',
-                                style: TextStyle(
-                                    color: Colors.white60,
-                                    fontSize: 12)),
-                          ],
-                        ),
+                  child: const Row(children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Admin Dashboard',
+                              style: TextStyle(
+                                  color: Colors.white70, fontSize: 13)),
+                          SizedBox(height: 4),
+                          Text('SmartPlace',
+                              style: TextStyle(
+                                  fontFamily: 'Syne',
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w800)),
+                          SizedBox(height: 6),
+                          Text('Manage students, faculty & campus',
+                              style: TextStyle(
+                                  color: Colors.white60, fontSize: 12)),
+                        ],
                       ),
-                      const Icon(Icons.admin_panel_settings_rounded,
-                          color: Colors.white38, size: 48),
-                    ],
-                  ),
+                    ),
+                    Icon(Icons.admin_panel_settings_rounded,
+                        color: Colors.white38, size: 48),
+                  ]),
                 ).animate().fadeIn().slideY(begin: 0.2),
 
                 const SizedBox(height: 24),
-
                 const Text('Platform Overview',
-                    style: TextStyle(
-                        fontFamily: 'Syne',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700))
+                        style: TextStyle(
+                            fontFamily: 'Syne',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700))
                     .animate()
                     .fadeIn(delay: 100.ms),
-
                 const SizedBox(height: 14),
 
-                Row(
-                  children: [
-                    _AdminStatCard(
+                Row(children: [
+                  _StatCard(
                       icon: Icons.people_rounded,
                       label: 'Students',
                       value: data['totalStudents']?.toString() ?? '—',
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 12),
-                    _AdminStatCard(
+                      color: AppColors.primary),
+                  const SizedBox(width: 12),
+                  _StatCard(
                       icon: Icons.pending_actions_rounded,
                       label: 'Pending',
                       value: data['pendingApprovals']?.toString() ?? '—',
-                      color: AppColors.warning,
-                    ),
-                    const SizedBox(width: 12),
-                    _AdminStatCard(
+                      color: AppColors.warning),
+                  const SizedBox(width: 12),
+                  _StatCard(
                       icon: Icons.menu_book_rounded,
                       label: 'Notes',
                       value: data['totalNotes']?.toString() ?? '—',
-                      color: AppColors.secondary,
-                    ),
-                  ],
-                ).animate().fadeIn(delay: 200.ms),
+                      color: AppColors.secondary),
+                ]).animate().fadeIn(delay: 200.ms),
               ],
             ),
           );
@@ -220,12 +202,11 @@ class _AdminDashboard extends StatelessWidget {
   }
 }
 
-class _AdminStatCard extends StatelessWidget {
+class _StatCard extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final String value;
+  final String label, value;
   final Color color;
-  const _AdminStatCard(
+  const _StatCard(
       {required this.icon,
       required this.label,
       required this.value,
@@ -241,27 +222,28 @@ class _AdminStatCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: color.withOpacity(0.2)),
         ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 8),
-            Text(value,
-                style: TextStyle(
-                    fontFamily: 'Syne',
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: color)),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.lightMuted)),
-          ],
-        ),
+        child: Column(children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(value,
+              style: TextStyle(
+                  fontFamily: 'Syne',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: color)),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 11, color: AppColors.lightMuted)),
+        ]),
       ),
     );
   }
 }
 
 // ─── Approvals Tab ────────────────────────────────
+// KEY FIX: Uses StreamBuilder instead of FutureBuilder.
+// The list instantly updates when you tap Approve or Reject —
+// no manual refresh, no restart needed.
 class _ApprovalsTab extends StatelessWidget {
   final FirestoreService fs;
   const _ApprovalsTab({required this.fs});
@@ -270,8 +252,8 @@ class _ApprovalsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Pending Approvals')),
-      body: FutureBuilder<List<UserModel>>(
-        future: fs.getPendingUsers(),
+      body: StreamBuilder<List<UserModel>>(
+        stream: fs.pendingUsersStream(),   // ← real-time stream
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -310,24 +292,43 @@ class _ApprovalsTab extends StatelessWidget {
                 user: user,
                 onApprove: () async {
                   await fs.approveUser(user.uid);
+                  // No setState needed — StreamBuilder rebuilds automatically
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('✅ ${user.name} approved!'),
-                        backgroundColor: AppColors.secondary,
-                      ),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('✅ ${user.name} approved!'),
+                      backgroundColor: AppColors.secondary,
+                    ));
                   }
                 },
                 onReject: () async {
-                  await fs.rejectUser(user.uid);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${user.name} rejected'),
+                  // Confirm before deleting
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Reject User?'),
+                      content: Text(
+                          'This will permanently remove ${user.name}\'s account. Continue?'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel')),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accent),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Reject'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    await fs.rejectUser(user.uid);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('${user.name} rejected and removed'),
                         backgroundColor: AppColors.accent,
-                      ),
-                    );
+                      ));
+                    }
                   }
                 },
               )
@@ -355,9 +356,8 @@ class _ApprovalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final roleColor = user.isStudent
-        ? AppColors.studentColor
-        : AppColors.facultyColor;
+    final roleColor =
+        user.isStudent ? AppColors.studentColor : AppColors.facultyColor;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -374,63 +374,54 @@ class _ApprovalCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
+          Row(children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
                   color: roleColor.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    user.name.isNotEmpty
-                        ? user.name[0].toUpperCase()
-                        : '?',
-                    style: TextStyle(
+                  shape: BoxShape.circle),
+              child: Center(
+                child: Text(
+                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                  style: TextStyle(
                       fontFamily: 'Syne',
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
-                      color: roleColor,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(user.name,
-                        style: const TextStyle(
-                            fontFamily: 'Syne',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14)),
-                    Text(user.email,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.lightMuted)),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: roleColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  user.role.toUpperCase(),
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
                       color: roleColor),
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(user.name,
+                      style: const TextStyle(
+                          fontFamily: 'Syne',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14)),
+                  Text(user.email,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.lightMuted)),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: roleColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(user.role.toUpperCase(),
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: roleColor)),
+            ),
+          ]),
           const SizedBox(height: 8),
           Text(
             user.isStudent
@@ -440,35 +431,32 @@ class _ApprovalCard extends StatelessWidget {
                 fontSize: 12, color: AppColors.lightMuted),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onReject,
-                  icon: const Icon(Icons.close_rounded, size: 16),
-                  label: const Text('Reject'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.accent,
-                    side:
-                        const BorderSide(color: AppColors.accent),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onReject,
+                icon: const Icon(Icons.close_rounded, size: 16),
+                label: const Text('Reject'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.accent,
+                  side: const BorderSide(color: AppColors.accent),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: onApprove,
-                  icon: const Icon(Icons.check_rounded, size: 16),
-                  label: const Text('Approve'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondary,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: onApprove,
+                icon: const Icon(Icons.check_rounded, size: 16),
+                label: const Text('Approve'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.secondary,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
-            ],
-          ),
+            ),
+          ]),
         ],
       ),
     );
@@ -490,9 +478,14 @@ class _BroadcastTabState extends State<_BroadcastTab> {
   bool _isSending = false;
 
   @override
-  Widget build(BuildContext context) {
-    final user = context.watch<AuthService>().userModel;
+  void dispose() {
+    _titleCtrl.dispose();
+    _messageCtrl.dispose();
+    super.dispose();
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Broadcast Alert')),
       body: SingleChildScrollView(
@@ -508,24 +501,21 @@ class _BroadcastTabState extends State<_BroadcastTab> {
                 border: Border.all(
                     color: AppColors.adminColor.withOpacity(0.2)),
               ),
-              child: const Row(
-                children: [
-                  Icon(Icons.send_rounded,
-                      color: AppColors.adminColor, size: 18),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'This message will be sent to all approved students',
-                      style: TextStyle(
-                          fontSize: 13, color: AppColors.adminColor),
-                    ),
+              child: const Row(children: [
+                Icon(Icons.send_rounded,
+                    color: AppColors.adminColor, size: 18),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'This message will be sent to all approved students',
+                    style: TextStyle(
+                        fontSize: 13, color: AppColors.adminColor),
                   ),
-                ],
-              ),
+                ),
+              ]),
             ),
 
             const SizedBox(height: 20),
-
             const Text('Alert Title',
                 style: TextStyle(
                     fontSize: 13,
@@ -551,8 +541,7 @@ class _BroadcastTabState extends State<_BroadcastTab> {
               controller: _messageCtrl,
               maxLines: 5,
               decoration: const InputDecoration(
-                hintText: 'Write your broadcast message...',
-              ),
+                  hintText: 'Write your broadcast message...'),
             ),
 
             const SizedBox(height: 28),
@@ -561,7 +550,7 @@ class _BroadcastTabState extends State<_BroadcastTab> {
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.adminColor),
-                onPressed: _isSending ? null : () => _send(user),
+                onPressed: _isSending ? null : _send,
                 icon: _isSending
                     ? const SizedBox(
                         height: 16,
@@ -569,7 +558,8 @@ class _BroadcastTabState extends State<_BroadcastTab> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.send_rounded),
-                label: Text(_isSending ? 'Sending...' : 'Send to All Students'),
+                label:
+                    Text(_isSending ? 'Sending...' : 'Send to All Students'),
               ),
             ),
           ],
@@ -578,14 +568,12 @@ class _BroadcastTabState extends State<_BroadcastTab> {
     );
   }
 
-  Future<void> _send(user) async {
+  Future<void> _send() async {
     if (_titleCtrl.text.isEmpty || _messageCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields')),
-      );
+          const SnackBar(content: Text('Please fill all fields')));
       return;
     }
-
     setState(() => _isSending = true);
 
     final students = await widget.fs.getAllStudents();
@@ -599,17 +587,14 @@ class _BroadcastTabState extends State<_BroadcastTab> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              '✅ Broadcast sent to ${students.length} students!'),
-          backgroundColor: AppColors.secondary,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+            '✅ Broadcast sent to ${students.length} students!'),
+        backgroundColor: AppColors.secondary,
+      ));
       _titleCtrl.clear();
       _messageCtrl.clear();
     }
-
     setState(() => _isSending = false);
   }
 }

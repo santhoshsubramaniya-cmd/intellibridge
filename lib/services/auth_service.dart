@@ -80,7 +80,12 @@ class AuthService extends ChangeNotifier {
         });
       }
 
-      _userModel = user;
+      // ✅ KEY FIX: Sign out immediately after registration
+      // so the Firebase Auth session never persists for unapproved users.
+      // Do NOT set _userModel here — that would trigger listeners
+      // and cause auto-navigation into the app.
+      await _auth.signOut();
+      _userModel = null;
       _isLoading = false;
       notifyListeners();
       return AuthResult.success;
@@ -111,6 +116,7 @@ class AuthService extends ChangeNotifier {
 
       if (!profile.approved && profile.role != AppConstants.roleAdmin) {
         await _auth.signOut();
+        _userModel = null;
         _isLoading = false;
         notifyListeners();
         return AuthResult.notApproved;

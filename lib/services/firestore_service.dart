@@ -9,7 +9,20 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // ─── USERS ───────────────────────────────────────────
+  // ─── USERS ────────────────────────────────────────────
+
+  /// Real-time stream — Approvals tab uses this so the list
+  /// auto-refreshes the moment you approve or reject someone.
+  Stream<List<UserModel>> pendingUsersStream() {
+    return _db
+        .collection(AppConstants.colUsers)
+        .where('approved', isEqualTo: false)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList());
+  }
+
+  /// One-shot fetch — kept for backwards compat.
   Future<List<UserModel>> getPendingUsers() async {
     final snap = await _db
         .collection(AppConstants.colUsers)
@@ -28,7 +41,12 @@ class FirestoreService {
   }
 
   Future<void> rejectUser(String uid) async {
+    // Delete from Auth is not possible client-side without re-auth,
+    // so we delete the Firestore doc and also delete the students doc if present.
     await _db.collection(AppConstants.colUsers).doc(uid).delete();
+    try {
+      await _db.collection(AppConstants.colStudents).doc(uid).delete();
+    } catch (_) {}
   }
 
   Future<List<UserModel>> getAllStudents() async {
@@ -53,12 +71,11 @@ class FirestoreService {
         .toList();
   }
 
-  // ─── STUDENT PROFILE ─────────────────────────────────
+  // ─── STUDENT PROFILE ──────────────────────────────────
+
   Future<StudentProfile?> getStudentProfile(String uid) async {
-    final doc = await _db
-        .collection(AppConstants.colStudents)
-        .doc(uid)
-        .get();
+    final doc =
+        await _db.collection(AppConstants.colStudents).doc(uid).get();
     if (doc.exists) return StudentProfile.fromMap(doc.data()!);
     return null;
   }
@@ -71,7 +88,8 @@ class FirestoreService {
         .map((d) => d.exists ? StudentProfile.fromMap(d.data()!) : null);
   }
 
-  // ─── NOTES ───────────────────────────────────────────
+  // ─── NOTES ────────────────────────────────────────────
+
   Future<void> uploadNote({
     required String title,
     required String department,
@@ -80,14 +98,12 @@ class FirestoreService {
     required Uint8List fileBytes,
     required String fileName,
   }) async {
-    // Upload file to Firebase Storage
     final ref = _storage
         .ref()
         .child('notes/${DateTime.now().millisecondsSinceEpoch}_$fileName');
     await ref.putData(fileBytes);
     final fileUrl = await ref.getDownloadURL();
 
-    // Save metadata to Firestore
     await _db.collection(AppConstants.colNotes).add({
       'title': title,
       'department': department.toLowerCase(),
@@ -101,8 +117,7 @@ class FirestoreService {
     });
   }
 
-  Stream<QuerySnapshot> getNotesForStudent(
-      String course, int semester) {
+  Stream<QuerySnapshot> getNotesForStudent(String course, int semester) {
     return _db
         .collection(AppConstants.colNotes)
         .where('department', isEqualTo: course.toLowerCase())
@@ -119,16 +134,14 @@ class FirestoreService {
   }
 
   Future<void> deleteNote(String noteId, String fileUrl) async {
-    await _db
-        .collection(AppConstants.colNotes)
-        .doc(noteId)
-        .delete();
+    await _db.collection(AppConstants.colNotes).doc(noteId).delete();
     try {
       await _storage.refFromURL(fileUrl).delete();
     } catch (_) {}
   }
 
-  // ─── RESULTS ─────────────────────────────────────────
+  // ─── RESULTS ──────────────────────────────────────────
+
   Future<void> postResult({
     required String studentEmail,
     required String subject,
@@ -162,13 +175,11 @@ class FirestoreService {
   }
 
   Future<void> deleteResult(String resultId) async {
-    await _db
-        .collection(AppConstants.colResults)
-        .doc(resultId)
-        .delete();
+    await _db.collection(AppConstants.colResults).doc(resultId).delete();
   }
 
-  // ─── ANNOUNCEMENTS ───────────────────────────────────
+  // ─── ANNOUNCEMENTS ────────────────────────────────────
+
   Future<void> postAnnouncement({
     required String title,
     required String message,
@@ -192,13 +203,11 @@ class FirestoreService {
   }
 
   Future<void> deleteAnnouncement(String id) async {
-    await _db
-        .collection(AppConstants.colAnnouncements)
-        .doc(id)
-        .delete();
+    await _db.collection(AppConstants.colAnnouncements).doc(id).delete();
   }
 
-  // ─── ALERTS ──────────────────────────────────────────
+  // ─── ALERTS ───────────────────────────────────────────
+
   Future<void> createAlert({
     required String userId,
     required String type,
@@ -240,7 +249,8 @@ class FirestoreService {
     return snap.count ?? 0;
   }
 
-  // ─── ANALYTICS (Admin) ───────────────────────────────
+  // ─── ANALYTICS (Admin) ────────────────────────────────
+
   Future<Map<String, dynamic>> getCollegeAnalytics() async {
     final studentsSnap = await _db
         .collection(AppConstants.colUsers)
@@ -255,10 +265,8 @@ class FirestoreService {
         .count()
         .get();
 
-    final notesSnap = await _db
-        .collection(AppConstants.colNotes)
-        .count()
-        .get();
+    final notesSnap =
+        await _db.collection(AppConstants.colNotes).count().get();
 
     return {
       'totalStudents': studentsSnap.count ?? 0,
