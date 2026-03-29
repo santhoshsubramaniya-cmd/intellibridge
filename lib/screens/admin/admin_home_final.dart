@@ -146,7 +146,7 @@ class _AdminDashboard extends StatelessWidget {
                               style: TextStyle(
                                   color: Colors.white70, fontSize: 13)),
                           SizedBox(height: 4),
-                          Text('SmartPlace',
+                          Text('InteliBridge',
                               style: TextStyle(
                                   fontFamily: 'Syne',
                                   color: Colors.white,

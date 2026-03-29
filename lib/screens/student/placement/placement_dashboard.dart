@@ -7,8 +7,11 @@ import '../../../services/firestore_service.dart';
 import '../../../models/student_model.dart';
 import 'hireability_screen.dart';
 import 'percentile_screen.dart';
-import 'training_plan_screen.dart';
-import '../../../services/placement_drive_service.dart';
+import 'simulate_screen.dart';
+import 'interview_screen.dart';
+import 'profile_update_screen.dart';
+import 'ai_profile_screen.dart';
+import '../chat/chat_home.dart';
 
 class PlacementDashboard extends StatefulWidget {
   const PlacementDashboard({super.key});
@@ -44,6 +47,17 @@ class _PlacementDashboardState extends State<PlacementDashboard> {
       appBar: AppBar(
         title: const Text('Career & Placement'),
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline_rounded),
+            tooltip: 'Update Profile',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const ProfileUpdateScreen()),
+            ).then((_) => _loadProfile()),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -69,78 +83,100 @@ class _PlacementDashboardState extends State<PlacementDashboard> {
                           fontWeight: FontWeight.w700))
                       .animate()
                       .fadeIn(delay: 100.ms),
-
                   const SizedBox(height: 14),
 
-                  // Feature cards
-                  _PlacementFeatureCard(
+                  // FIXED: All onTap now navigate to actual working screens
+                  _FeatureCard(
                     icon: Icons.analytics_rounded,
                     title: 'Hireability Score',
-                    subtitle: 'AI-powered multi-dimensional placement score',
+                    subtitle:
+                        'AI-powered multi-dimensional placement score',
                     color: AppColors.primary,
                     badge: _profile != null
                         ? '${_profile!.hireabilityScore.toInt()}%'
                         : null,
                     onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const HireabilityScreen()),
-                    ),
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const HireabilityScreen())),
                   ).animate().fadeIn(delay: 150.ms),
 
-                  _PlacementFeatureCard(
+                  _FeatureCard(
                     icon: Icons.leaderboard_rounded,
                     title: 'Placement Standing',
-                    subtitle: 'Your percentile rank + drive eligibility',
+                    subtitle:
+                        'Your percentile rank + drive eligibility',
                     color: AppColors.secondary,
                     badge: _profile != null
                         ? '${_profile!.overallPercentile}th %ile'
                         : null,
                     onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const PercentileScreen()),
-                    ),
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const PercentileScreen())),
                   ).animate().fadeIn(delay: 200.ms),
 
-                  _PlacementFeatureCard(
-                    icon: Icons.map_rounded,
-                    title: 'AI Training Plans',
-                    subtitle: 'Personalised day-by-day prep for each drive',
-                    color: AppColors.warning,
+                  _FeatureCard(
+                    icon: Icons.auto_awesome_rounded,
+                    title: 'AI Profile Analysis',
+                    subtitle:
+                        'Gemini analyses your full academic profile',
+                    color: AppColors.violet,
                     onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const PercentileScreen()),
-                    ),
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const AIProfileScreen())),
                   ).animate().fadeIn(delay: 250.ms),
 
-                  _PlacementFeatureCard(
+                  // FIXED: AI Mentor Chat now opens ChatHome on AI tab
+                  _FeatureCard(
                     icon: Icons.psychology_rounded,
                     title: 'AI Mentor Chat',
-                    subtitle: 'Ask anything about your placement journey',
+                    subtitle:
+                        'Ask anything about your placement journey',
                     color: AppColors.accent,
-                    badge: 'Week 6',
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const ChatHome())),
                   ).animate().fadeIn(delay: 300.ms),
 
-                  _PlacementFeatureCard(
+                  // FIXED: Job Simulation now opens SimulationScreen
+                  _FeatureCard(
                     icon: Icons.computer_rounded,
                     title: 'Job Simulation',
-                    subtitle: 'Complete real work tasks for your target role',
+                    subtitle:
+                        'Complete real work tasks for your target role',
                     color: AppColors.primary,
-                    badge: 'Week 9',
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SimulationScreen())),
                   ).animate().fadeIn(delay: 350.ms),
 
-                  _PlacementFeatureCard(
+                  // FIXED: Mock Interview now opens MockInterviewScreen
+                  _FeatureCard(
                     icon: Icons.record_voice_over_rounded,
                     title: 'Mock Interview',
                     subtitle: 'AI evaluates your answers with feedback',
                     color: AppColors.secondary,
-                    badge: 'Week 9',
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const MockInterviewScreen())),
                   ).animate().fadeIn(delay: 400.ms),
+
+                  _FeatureCard(
+                    icon: Icons.edit_note_rounded,
+                    title: 'Update My Profile',
+                    subtitle: 'CGPA, skills, internships, projects',
+                    color: AppColors.warning,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ProfileUpdateScreen()),
+                    ).then((_) => _loadProfile()),
+                  ).animate().fadeIn(delay: 450.ms),
 
                   const SizedBox(height: 40),
                 ],
@@ -161,6 +197,7 @@ class _HireabilityPreview extends StatelessWidget {
         : score >= 50
             ? AppColors.warning
             : AppColors.accent;
+
     final verdict = score >= 80
         ? 'Highly Placeable 🚀'
         : score >= 65
@@ -173,71 +210,64 @@ class _HireabilityPreview extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color.withOpacity(0.12), color.withOpacity(0.04)],
-        ),
+            colors: [color.withOpacity(0.12), color.withOpacity(0.04)]),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.25)),
       ),
-      child: Row(
-        children: [
-          TweenAnimationBuilder<int>(
-            tween: IntTween(begin: 0, end: score),
-            duration: const Duration(milliseconds: 1200),
-            builder: (_, val, __) => Text(
-              '$val%',
+      child: Row(children: [
+        TweenAnimationBuilder<int>(
+          tween: IntTween(begin: 0, end: score),
+          duration: const Duration(milliseconds: 1200),
+          builder: (_, val, __) => Text('$val%',
               style: TextStyle(
-                fontFamily: 'Syne',
-                fontSize: 48,
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Hireability Score',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.lightMuted,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(verdict,
-                    style: TextStyle(
-                        fontFamily: 'Syne',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: color)),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: LinearProgressIndicator(
-                    value: score / 100,
-                    backgroundColor: color.withOpacity(0.15),
-                    valueColor: AlwaysStoppedAnimation(color),
-                    minHeight: 5,
-                  ),
+                  fontFamily: 'Syne',
+                  fontSize: 48,
+                  fontWeight: FontWeight.w800,
+                  color: color)),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Hireability Score',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.lightMuted,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(verdict,
+                  style: TextStyle(
+                      fontFamily: 'Syne',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  value: score / 100,
+                  backgroundColor: color.withOpacity(0.15),
+                  valueColor: AlwaysStoppedAnimation(color),
+                  minHeight: 5,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 }
 
-class _PlacementFeatureCard extends StatelessWidget {
+class _FeatureCard extends StatelessWidget {
   final IconData icon;
-  final String title;
-  final String subtitle;
+  final String title, subtitle;
   final Color color;
   final String? badge;
   final VoidCallback onTap;
 
-  const _PlacementFeatureCard({
+  const _FeatureCard({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -262,54 +292,50 @@ class _PlacementFeatureCard extends StatelessWidget {
                 : AppColors.lightBorder,
           ),
         ),
-        child: Row(
-          children: [
+        child: Row(children: [
+          Container(
+            width: 46, height: 46,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontFamily: 'Syne',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.lightMuted)),
+              ],
+            ),
+          ),
+          if (badge != null)
             Container(
-              width: 46,
-              height: 46,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontFamily: 'Syne',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.lightMuted)),
-                ],
-              ),
-            ),
-            if (badge != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(badge!,
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: color)),
-              ),
-            ] else
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 14, color: AppColors.lightMuted),
-          ],
-        ),
+              child: Text(badge!,
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
+            )
+          else
+            Icon(Icons.arrow_forward_ios_rounded,
+                size: 14, color: AppColors.lightMuted),
+        ]),
       ),
     );
   }

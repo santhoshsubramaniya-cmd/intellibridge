@@ -75,19 +75,16 @@ class AuthService extends ChangeNotifier {
       );
 
       // Step 3 — Write to 'users' collection
-      // toMap() does NOT include uid by default, so we add it manually.
-      // This makes it easier to query the doc without relying on doc.id.
       final userMap = {
         ...user.toMap(),
-        'uid': uid, // explicit uid field inside the document
+        'uid': uid,
       };
-
       await _db
           .collection(AppConstants.colUsers)
           .doc(uid)
           .set(userMap);
 
-      // Step 4 — For students, also create their placement profile
+      // Step 4 — For students, create their placement profile
       if (role == AppConstants.roleStudent) {
         await _db
             .collection(AppConstants.colStudents)
@@ -109,35 +106,35 @@ class AuthService extends ChangeNotifier {
         });
       }
 
-      _userModel = user;
+      // ✅ KEY FIX: Sign out immediately after registration.
+      // Firebase auto-signs-in after createUserWithEmailAndPassword.
+      // If we don't sign out, the session persists and the splash screen
+      // will route unapproved users directly into the app on next launch.
+      // We also must NOT set _userModel here — that would trigger listeners
+      // in register_screen.dart (via context.watch<AuthService>()) and
+      // could cause unexpected rebuilds or navigation.
+      await _auth.signOut();
+      _userModel = null;
       _isLoading = false;
       notifyListeners();
       return AuthResult.success;
 
     } on FirebaseAuthException catch (e) {
-      // Auth-level errors: wrong password, email in use, etc.
       debugPrint('register FirebaseAuthException [${e.code}]: ${e.message}');
       _isLoading = false;
       notifyListeners();
       return _mapAuthError(e.code);
 
     } on FirebaseException catch (e) {
-      // Firestore write errors (permission denied, database not found, etc.)
-      // These were previously swallowed because only FirebaseAuthException was caught.
       debugPrint('register FirebaseException (Firestore) [${e.code}]: ${e.message}');
-      // Auth account was created but profile write failed — delete the orphan Auth user
-      try {
-        await _auth.currentUser?.delete();
-      } catch (_) {}
+      try { await _auth.currentUser?.delete(); } catch (_) {}
       _isLoading = false;
       notifyListeners();
       return AuthResult.firestoreError;
 
     } catch (e) {
       debugPrint('register unknown error: $e');
-      try {
-        await _auth.currentUser?.delete();
-      } catch (_) {}
+      try { await _auth.currentUser?.delete(); } catch (_) {}
       _isLoading = false;
       notifyListeners();
       return AuthResult.unknown;
@@ -162,6 +159,7 @@ class AuthService extends ChangeNotifier {
 
       if (profile == null) {
         await _auth.signOut();
+        _userModel = null;
         _isLoading = false;
         notifyListeners();
         return AuthResult.userNotFound;
@@ -169,6 +167,7 @@ class AuthService extends ChangeNotifier {
 
       if (!profile.approved && profile.role != AppConstants.roleAdmin) {
         await _auth.signOut();
+        _userModel = null;
         _isLoading = false;
         notifyListeners();
         return AuthResult.notApproved;

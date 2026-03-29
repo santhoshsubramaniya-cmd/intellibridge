@@ -3,30 +3,36 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
-import 'config/themes.dart';
 import 'firebase_options.dart';
+import 'config/themes.dart';
 import 'services/auth_service.dart';
 import 'screens/auth/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load .env (Gemini + JSearch API keys)
-  await dotenv.load(fileName: '.env');
+  // ── Load .env safely ──────────────────────────────────
+  // If the .env asset is missing (common on fresh installs / other devices),
+  // we catch the error and continue instead of crashing.
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    debugPrint('⚠️  .env file not found or failed to load: $e');
+    // App will still run. Gemini/JSearch features will degrade gracefully.
+  }
 
-  // Pass explicit options so Firebase connects to the correct project
-  // on every platform (Android, iOS, web, Windows, macOS).
-  // Without this, iOS/web/Windows silently connect to nothing and
-  // every Firestore write fails.
+  // ── Initialize Firebase ───────────────────────────────
+  // Always pass options explicitly — required for multi-platform and
+  // for the app to connect to the correct Firebase project on ANY device.
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const SmartPlaceApp());
+  runApp(const InteliBridgeApp());
 }
 
-class SmartPlaceApp extends StatelessWidget {
-  const SmartPlaceApp({super.key});
+class InteliBridgeApp extends StatelessWidget {
+  const InteliBridgeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +41,7 @@ class SmartPlaceApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthService()),
       ],
       child: MaterialApp(
-        title: 'SmartPlace',
+        title: 'InteliBridge',
         debugShowCheckedModeBanner: false,
         theme: AppThemes.lightTheme,
         darkTheme: AppThemes.darkTheme,

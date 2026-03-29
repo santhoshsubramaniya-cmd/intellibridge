@@ -1,10 +1,8 @@
 class AppConstants {
-  // App info
-  static const appName = 'SmartPlace';
+  static const appName = 'InteliBridge';
   static const appTagline = 'Campus to Career — Powered by AI';
-  static const appVersion = '1.0.0';
 
-  // User roles
+  // Roles
   static const roleStudent = 'student';
   static const roleFaculty = 'faculty';
   static const roleAdmin = 'admin';
@@ -18,25 +16,20 @@ class AppConstants {
     'BCA',
   ];
 
-  // Semesters
   static const semesters = [1, 2, 3, 4, 5, 6];
 
-  // Skills list
   static const allSkills = [
-    'Python', 'Java', 'JavaScript', 'C++', 'C',
-    'SQL', 'R', 'Go', 'HTML/CSS', 'React',
-    'Node.js', 'Flask', 'Django', 'Spring Boot',
-    'Machine Learning', 'Deep Learning', 'TensorFlow',
-    'Data Analysis', 'Excel', 'Power BI', 'Tableau',
-    'Git', 'Docker', 'Kubernetes', 'AWS', 'Azure',
-    'Linux', 'DSA', 'System Design', 'REST APIs',
+    'Python', 'Java', 'JavaScript', 'C++', 'C', 'SQL', 'R', 'Go',
+    'HTML/CSS', 'React', 'Node.js', 'Flask', 'Django', 'Spring Boot',
+    'Machine Learning', 'Deep Learning', 'TensorFlow', 'Data Analysis',
+    'Excel', 'Power BI', 'Tableau', 'Git', 'Docker', 'Kubernetes',
+    'AWS', 'Azure', 'Linux', 'DSA', 'System Design', 'REST APIs',
   ];
 
-  // Role to required skills mapping
   static const roleSkills = {
-    'Software Engineer': ['Python', 'Java', 'DSA', 'System Design', 'Git'],
+    'Software Engineer': ['Python', 'Java', 'DSA', 'System Design', 'Git', 'REST APIs'],
     'Data Analyst': ['Python', 'SQL', 'Excel', 'Power BI', 'Tableau'],
-    'Data Scientist': ['Python', 'Machine Learning', 'Deep Learning', 'SQL'],
+    'Data Scientist': ['Python', 'Machine Learning', 'Deep Learning', 'SQL', 'TensorFlow'],
     'Frontend Developer': ['HTML/CSS', 'JavaScript', 'React', 'Git'],
     'Backend Developer': ['Python', 'Node.js', 'REST APIs', 'SQL', 'Docker'],
     'Full Stack Developer': ['HTML/CSS', 'JavaScript', 'React', 'Node.js', 'SQL'],
@@ -44,7 +37,6 @@ class AppConstants {
     'Business Analyst': ['Excel', 'SQL', 'Power BI', 'Data Analysis'],
   };
 
-  // Subject to skill mapping (Smart Campus integration)
   static const subjectToSkill = {
     'Database Management': ['SQL', 'MySQL'],
     'Machine Learning': ['Python', 'Machine Learning', 'TensorFlow'],
@@ -59,7 +51,6 @@ class AppConstants {
   // Firestore collections
   static const colUsers = 'users';
   static const colStudents = 'students';
-  static const colFaculty = 'faculty';
   static const colNotes = 'notes';
   static const colResults = 'results';
   static const colAnnouncements = 'announcements';

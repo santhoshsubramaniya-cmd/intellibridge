@@ -11,8 +11,6 @@ class FirestoreService {
 
   // ─── USERS ────────────────────────────────────────────
 
-  /// Real-time stream — Approvals tab uses this so the list
-  /// auto-refreshes the moment you approve or reject someone.
   Stream<List<UserModel>> pendingUsersStream() {
     return _db
         .collection(AppConstants.colUsers)
@@ -22,15 +20,12 @@ class FirestoreService {
             snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList());
   }
 
-  /// One-shot fetch — kept for backwards compat.
   Future<List<UserModel>> getPendingUsers() async {
     final snap = await _db
         .collection(AppConstants.colUsers)
         .where('approved', isEqualTo: false)
         .get();
-    return snap.docs
-        .map((d) => UserModel.fromMap(d.data(), d.id))
-        .toList();
+    return snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList();
   }
 
   Future<void> approveUser(String uid) async {
@@ -41,8 +36,6 @@ class FirestoreService {
   }
 
   Future<void> rejectUser(String uid) async {
-    // Delete from Auth is not possible client-side without re-auth,
-    // so we delete the Firestore doc and also delete the students doc if present.
     await _db.collection(AppConstants.colUsers).doc(uid).delete();
     try {
       await _db.collection(AppConstants.colStudents).doc(uid).delete();
@@ -55,9 +48,7 @@ class FirestoreService {
         .where('role', isEqualTo: 'student')
         .where('approved', isEqualTo: true)
         .get();
-    return snap.docs
-        .map((d) => UserModel.fromMap(d.data(), d.id))
-        .toList();
+    return snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList();
   }
 
   Future<List<UserModel>> getAllFaculty() async {
@@ -66,9 +57,7 @@ class FirestoreService {
         .where('role', isEqualTo: 'faculty')
         .where('approved', isEqualTo: true)
         .get();
-    return snap.docs
-        .map((d) => UserModel.fromMap(d.data(), d.id))
-        .toList();
+    return snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList();
   }
 
   // ─── STUDENT PROFILE ──────────────────────────────────
@@ -89,6 +78,8 @@ class FirestoreService {
   }
 
   // ─── NOTES ────────────────────────────────────────────
+  // FIX: Removed orderBy('uploadedAt') to avoid needing a composite Firestore
+  // index. We now sort client-side so the query works without index setup.
 
   Future<void> uploadNote({
     required String title,
@@ -106,7 +97,8 @@ class FirestoreService {
 
     await _db.collection(AppConstants.colNotes).add({
       'title': title,
-      'department': department.toLowerCase(),
+      // Store lowercase so queries match regardless of how faculty typed it
+      'department': department.trim().toLowerCase(),
       'semester': semester,
       'uploadedBy': uploadedBy,
       'fileUrl': fileUrl,
@@ -117,20 +109,18 @@ class FirestoreService {
     });
   }
 
+  /// Returns notes for a student filtered by their course and semester.
+  /// No orderBy — sorted client-side to avoid Firestore composite index errors.
   Stream<QuerySnapshot> getNotesForStudent(String course, int semester) {
     return _db
         .collection(AppConstants.colNotes)
-        .where('department', isEqualTo: course.toLowerCase())
+        .where('department', isEqualTo: course.trim().toLowerCase())
         .where('semester', isEqualTo: semester)
-        .orderBy('uploadedAt', descending: true)
         .snapshots();
   }
 
   Stream<QuerySnapshot> getAllNotes() {
-    return _db
-        .collection(AppConstants.colNotes)
-        .orderBy('uploadedAt', descending: true)
-        .snapshots();
+    return _db.collection(AppConstants.colNotes).snapshots();
   }
 
   Future<void> deleteNote(String noteId, String fileUrl) async {
@@ -141,6 +131,7 @@ class FirestoreService {
   }
 
   // ─── RESULTS ──────────────────────────────────────────
+  // FIX: Removed orderBy('semester') — sorted client-side to avoid index error.
 
   Future<void> postResult({
     required String studentEmail,
@@ -150,7 +141,7 @@ class FirestoreService {
     required String uploadedBy,
   }) async {
     await _db.collection(AppConstants.colResults).add({
-      'studentEmail': studentEmail.toLowerCase(),
+      'studentEmail': studentEmail.trim().toLowerCase(),
       'subject': subject,
       'marks': marks,
       'semester': semester,
@@ -159,19 +150,17 @@ class FirestoreService {
     });
   }
 
+  /// Returns all results for a student by email.
+  /// No orderBy — sorted by semester client-side to avoid Firestore index error.
   Stream<QuerySnapshot> getResultsForStudent(String email) {
     return _db
         .collection(AppConstants.colResults)
-        .where('studentEmail', isEqualTo: email.toLowerCase())
-        .orderBy('semester')
+        .where('studentEmail', isEqualTo: email.trim().toLowerCase())
         .snapshots();
   }
 
   Stream<QuerySnapshot> getAllResults() {
-    return _db
-        .collection(AppConstants.colResults)
-        .orderBy('uploadedAt', descending: true)
-        .snapshots();
+    return _db.collection(AppConstants.colResults).snapshots();
   }
 
   Future<void> deleteResult(String resultId) async {
@@ -196,10 +185,7 @@ class FirestoreService {
   }
 
   Stream<QuerySnapshot> getAnnouncements() {
-    return _db
-        .collection(AppConstants.colAnnouncements)
-        .orderBy('postedAt', descending: true)
-        .snapshots();
+    return _db.collection(AppConstants.colAnnouncements).snapshots();
   }
 
   Future<void> deleteAnnouncement(String id) async {
@@ -228,7 +214,6 @@ class FirestoreService {
     return _db
         .collection(AppConstants.colAlerts)
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots();
   }
 
@@ -249,7 +234,7 @@ class FirestoreService {
     return snap.count ?? 0;
   }
 
-  // ─── ANALYTICS (Admin) ────────────────────────────────
+  // ─── ANALYTICS ────────────────────────────────────────
 
   Future<Map<String, dynamic>> getCollegeAnalytics() async {
     final studentsSnap = await _db

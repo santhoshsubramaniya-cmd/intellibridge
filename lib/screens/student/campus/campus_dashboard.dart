@@ -5,6 +5,11 @@ import '../../../config/themes.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/firestore_service.dart';
 import '../../auth/login_screen.dart';
+import 'notes_screen.dart';
+import 'results_screen.dart';
+import 'announcements_screen.dart';
+import '../placement/placement_dashboard.dart';
+import '../placement/profile_update_screen.dart';
 
 class CampusDashboard extends StatelessWidget {
   const CampusDashboard({super.key});
@@ -12,39 +17,32 @@ class CampusDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthService>().userModel;
-    final fs = FirestoreService();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(9),
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.secondary],
-                ),
-              ),
-              child: const Icon(Icons.school_rounded,
-                  color: Colors.white, size: 18),
+        title: Row(children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(9),
+              gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.secondary]),
             ),
-            const SizedBox(width: 10),
-            const Text('SmartPlace'),
-          ],
-        ),
+            child: const Icon(Icons.school_rounded,
+                color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 10),
+          // RENAMED: SmartPlace → InteliBridge
+          const Text('InteliBridge'),
+        ]),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             onPressed: () async {
               await context.read<AuthService>().logout();
               if (context.mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const LoginScreen()),
-                );
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()));
               }
             },
           ),
@@ -55,67 +53,55 @@ class CampusDashboard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome card
-            _WelcomeCard(name: user?.name ?? 'Student',
-                course: user?.course ?? '',
-                semester: user?.semester ?? 1)
-                .animate()
-                .fadeIn()
-                .slideY(begin: 0.2),
+            _WelcomeCard(
+              name: user?.name ?? 'Student',
+              course: user?.course ?? '',
+              semester: user?.semester ?? 1,
+            ).animate().fadeIn().slideY(begin: 0.2),
 
             const SizedBox(height: 24),
 
-            // Quick stats
-            const Text(
-              'Your Profile',
-              style: TextStyle(
-                fontFamily: 'Syne',
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ).animate().fadeIn(delay: 100.ms),
-
+            const Text('Your Profile',
+                style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700))
+                .animate()
+                .fadeIn(delay: 100.ms),
             const SizedBox(height: 12),
 
-            Row(
-              children: [
-                _StatCard(
+            Row(children: [
+              _StatCard(
                   icon: Icons.school_outlined,
                   label: 'Course',
                   value: user?.course?.split(' ').first ?? '—',
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 12),
-                _StatCard(
+                  color: AppColors.primary),
+              const SizedBox(width: 12),
+              _StatCard(
                   icon: Icons.calendar_today_outlined,
                   label: 'Semester',
                   value: 'Sem ${user?.semester ?? '—'}',
-                  color: AppColors.secondary,
-                ),
-                const SizedBox(width: 12),
-                _StatCard(
+                  color: AppColors.secondary),
+              const SizedBox(width: 12),
+              _StatCard(
                   icon: Icons.person_outline,
                   label: 'Role',
                   value: 'Student',
-                  color: AppColors.warning,
-                ),
-              ],
-            ).animate().fadeIn(delay: 200.ms),
+                  color: AppColors.warning),
+            ]).animate().fadeIn(delay: 200.ms),
 
             const SizedBox(height: 28),
 
-            // Quick actions
-            const Text(
-              'Quick Actions',
-              style: TextStyle(
-                fontFamily: 'Syne',
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ).animate().fadeIn(delay: 300.ms),
-
+            const Text('Quick Actions',
+                style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700))
+                .animate()
+                .fadeIn(delay: 300.ms),
             const SizedBox(height: 12),
 
+            // FIXED: All quick actions now navigate to the correct screens
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -129,52 +115,58 @@ class CampusDashboard extends StatelessWidget {
                   label: 'Study Notes',
                   subtitle: 'Access faculty notes',
                   color: AppColors.primary,
-                  onTap: () {},
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const NotesScreen())),
                 ),
                 _ActionCard(
                   icon: Icons.bar_chart_rounded,
                   label: 'My Results',
                   subtitle: 'View semester marks',
                   color: AppColors.secondary,
-                  onTap: () {},
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ResultsScreen())),
                 ),
                 _ActionCard(
                   icon: Icons.campaign_rounded,
                   label: 'Announcements',
                   subtitle: 'Latest campus news',
                   color: AppColors.warning,
-                  onTap: () {},
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const AnnouncementsScreen())),
                 ),
                 _ActionCard(
                   icon: Icons.work_outline_rounded,
                   label: 'Placement',
-                  subtitle: 'Coming in Week 3',
+                  subtitle: 'AI career tools',
                   color: AppColors.accent,
-                  onTap: () {},
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const PlacementDashboard())),
                 ),
               ],
             ).animate().fadeIn(delay: 400.ms),
 
             const SizedBox(height: 28),
 
-            // Latest announcements preview
-            const Text(
-              'Latest Announcements',
-              style: TextStyle(
-                fontFamily: 'Syne',
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ).animate().fadeIn(delay: 500.ms),
-
+            const Text('Latest Announcements',
+                style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700))
+                .animate()
+                .fadeIn(delay: 500.ms),
             const SizedBox(height: 12),
 
             StreamBuilder(
               stream: FirestoreService().getAnnouncements(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return const Center(
-                      child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
                 final docs = snapshot.data!.docs.take(3).toList();
                 if (docs.isEmpty) {
@@ -205,13 +197,10 @@ class CampusDashboard extends StatelessWidget {
 }
 
 class _WelcomeCard extends StatelessWidget {
-  final String name;
-  final String course;
+  final String name, course;
   final int semester;
   const _WelcomeCard(
-      {required this.name,
-      required this.course,
-      required this.semester});
+      {required this.name, required this.course, required this.semester});
 
   @override
   Widget build(BuildContext context) {
@@ -219,82 +208,67 @@ class _WelcomeCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFF4B44CC)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+            colors: [AppColors.primary, Color(0xFF4B44CC)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
+              color: AppColors.primary.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 8))
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome back,',
+      child: Row(children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Welcome back,',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  name,
+                      color: Colors.white.withOpacity(0.8), fontSize: 13)),
+              const SizedBox(height: 4),
+              Text(name,
                   style: const TextStyle(
-                    fontFamily: 'Syne',
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
+                      fontFamily: 'Syne',
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '$course · Semester $semester',
-                    style: const TextStyle(
+                child: Text(
+                  course.isEmpty ? 'Student' : '$course · Semester $semester',
+                  style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                      fontWeight: FontWeight.w600),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
+        ),
+        Container(
+          width: 56, height: 56,
+          decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.person_rounded,
-                color: Colors.white, size: 30),
-          ),
-        ],
-      ),
+              shape: BoxShape.circle),
+          child: const Icon(Icons.person_rounded,
+              color: Colors.white, size: 30),
+        ),
+      ]),
     );
   }
 }
 
 class _StatCard extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final String value;
+  final String label, value;
   final Color color;
   const _StatCard(
       {required this.icon,
@@ -317,20 +291,15 @@ class _StatCard extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 20),
             const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontFamily: 'Syne',
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.lightMuted),
-            ),
+            Text(value,
+                style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: color)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.lightMuted)),
           ],
         ),
       ),
@@ -340,8 +309,7 @@ class _StatCard extends StatelessWidget {
 
 class _ActionCard extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final String subtitle;
+  final String label, subtitle;
   final Color color;
   final VoidCallback onTap;
   const _ActionCard(
@@ -371,8 +339,7 @@ class _ActionCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 36, height: 36,
               decoration: BoxDecoration(
                 color: color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
@@ -382,19 +349,14 @@ class _ActionCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontFamily: 'Syne',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                      fontSize: 10, color: AppColors.lightMuted),
-                ),
+                Text(label,
+                    style: const TextStyle(
+                        fontFamily: 'Syne',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 10, color: AppColors.lightMuted)),
               ],
             ),
           ],
@@ -405,9 +367,7 @@ class _ActionCard extends StatelessWidget {
 }
 
 class _AnnouncementPreview extends StatelessWidget {
-  final String title;
-  final String message;
-  final String postedBy;
+  final String title, message, postedBy;
   const _AnnouncementPreview(
       {required this.title,
       required this.message,
@@ -437,13 +397,11 @@ class _AnnouncementPreview extends StatelessWidget {
                     style: const TextStyle(
                         fontWeight: FontWeight.w700, fontSize: 13)),
                 const SizedBox(height: 2),
-                Text(
-                  message,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.lightMuted),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(message,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.lightMuted),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
@@ -466,15 +424,13 @@ class _EmptyState extends StatelessWidget {
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        children: [
-          Icon(icon, size: 36, color: AppColors.lightMuted),
-          const SizedBox(height: 8),
-          Text(message,
-              style: const TextStyle(
-                  color: AppColors.lightMuted, fontSize: 13)),
-        ],
-      ),
+      child: Column(children: [
+        Icon(icon, size: 36, color: AppColors.lightMuted),
+        const SizedBox(height: 8),
+        Text(message,
+            style: const TextStyle(
+                color: AppColors.lightMuted, fontSize: 13)),
+      ]),
     );
   }
 }

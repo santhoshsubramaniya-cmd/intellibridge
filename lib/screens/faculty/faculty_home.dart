@@ -106,7 +106,7 @@ class _FacultyDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SmartPlace — Faculty'),
+        title: const Text('InteliBridge — Faculty'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout_rounded),

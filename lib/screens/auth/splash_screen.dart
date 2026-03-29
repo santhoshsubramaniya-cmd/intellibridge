@@ -29,42 +29,13 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     final user = FirebaseAuth.instance.currentUser;
-    debugPrint('=== SPLASH DEBUG ===');
-    debugPrint('Firebase currentUser: ${user?.uid ?? 'NULL'}');
-    debugPrint('Firebase currentUser email: ${user?.email ?? 'NULL'}');
-
-    if (user == null) {
-      debugPrint('No user → going to LoginScreen');
-      _goTo(const LoginScreen());
-      return;
-    }
+    if (user == null) { _goTo(const LoginScreen()); return; }
 
     final auth = context.read<AuthService>();
     final profile = await auth.fetchUserProfile(user.uid);
     if (!mounted) return;
 
-    debugPrint('Firestore profile: ${profile != null ? 'FOUND' : 'NULL'}');
-    if (profile != null) {
-      debugPrint('Profile role: ${profile.role}');
-      debugPrint('Profile approved: ${profile.approved}');
-      debugPrint('Profile name: ${profile.name}');
-    }
-
-    if (profile == null) {
-      debugPrint('No profile → going to LoginScreen');
-      _goTo(const LoginScreen());
-      return;
-    }
-
-    if (!profile.approved && profile.role != 'admin') {
-      debugPrint('NOT APPROVED → logging out and going to LoginScreen');
-      await auth.logout();
-      if (!mounted) return;
-      _goTo(const LoginScreen());
-      return;
-    }
-
-    debugPrint('Approved → routing to role: ${profile.role}');
+    if (profile == null) { _goTo(const LoginScreen()); return; }
 
     switch (profile.role) {
       case 'student': _goTo(const StudentHome()); break;
@@ -105,7 +76,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
             const SizedBox(height: 24),
 
-            const Text('SmartPlace',
+            const Text('InteliBridge',
               style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: Colors.white),
             ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3),
 
